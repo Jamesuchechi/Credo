@@ -1,4 +1,10 @@
-import { HealthResponse, ContentSubmissionRequest, SubmissionResponse } from '../types';
+import {
+  HealthResponse,
+  ContentSubmissionRequest,
+  SubmissionResponse,
+  ContentAnalysisResponse,
+  SourceResponse
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -18,6 +24,22 @@ export async function submitContent(data: ContentSubmissionRequest): Promise<Sub
   });
   if (!response.ok) {
     throw new Error(`Submission failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getContentAnalysis(contentId: string): Promise<ContentAnalysisResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/content/${contentId}`);
+  if (!response.ok) {
+    throw new Error(`Analysis fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getSourceReputation(domain: string): Promise<SourceResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/sources/${domain}`);
+  if (!response.ok) {
+    throw new Error(`Source lookup failed with status ${response.status}`);
   }
   return response.json();
 }

@@ -12,6 +12,106 @@ export interface SubmissionResponse {
   message?: string;
 }
 
+export interface DimensionScores {
+  factual_accuracy: number;
+  source_reputation: number;
+  manipulation_tactics: number;
+  clickbait_risk?: number;
+  bias: string;
+  temporal_consistency: number;
+  is_satire?: boolean;
+}
+
+export interface ManipulationTactic {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface ReasoningChain {
+  summary: string;
+  source_reputation_notes?: string;
+  corroboration_notes?: string;
+  claims_checked_count?: number;
+  detected_manipulation_tactics?: ManipulationTactic[];
+  satire_info?: {
+    is_satire: boolean;
+    reason?: string;
+    satire_label?: string;
+  };
+}
+
+export interface CorroboratingSource {
+  title?: string;
+  source?: string;
+  url?: string;
+  published_at?: string;
+  textual_rating?: string;
+  provider: string;
+}
+
+export interface ClaimItem {
+  id: string;
+  content_item_id: string;
+  claim_text: string;
+  extracted_speaker?: string;
+  verdict: 'supported' | 'contradicted' | 'unverified';
+  confidence_score: number;
+  evidence_summary: string;
+  reasoning_chain?: {
+    notes?: string;
+    corroborating_references?: CorroboratingSource[];
+  };
+  created_at: string;
+  ttl_expires_at?: string;
+}
+
+export interface ContentAnalysisResponse {
+  content_id: string;
+  modality: ModalityType;
+  url?: string;
+  title?: string;
+  status: 'queued' | 'processing' | 'complete' | 'failed';
+  composite_score?: number;
+  dimension_scores?: DimensionScores;
+  reasoning_chain?: ReasoningChain;
+  corroborating_sources?: CorroboratingSource[];
+  claims?: ClaimItem[];
+  model_version?: string;
+  created_at: string;
+}
+
+export interface SourceResponse {
+  id: string;
+  domain: string;
+  name: string;
+  historical_accuracy_score: number;
+  bias_rating: string;
+  whois_age_days?: number;
+  is_known_satire: boolean;
+  is_known_misinfo: boolean;
+  label: string;
+}
+
+export interface UserCreate {
+  email: string;
+  password: string;
+  full_name: string;
+}
+
+export interface UserLogin {
+  email: string;
+  password: string;
+}
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface HealthResponse {
   status: string;
   version: string;

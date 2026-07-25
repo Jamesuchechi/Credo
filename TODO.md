@@ -24,44 +24,44 @@ This roadmap is phased so each phase ships something independently usable/demoab
 
 This phase alone is a usable, demoable product.
 
-- [ ] `sources` table + migration
-- [ ] Seed source reputation DB from public datasets (MBFC-style data — verify ToS before scraping/using any dataset)
-- [ ] WHOIS lookup integration (domain age signal)
-- [ ] Article extraction service (readability/trafilatura) for URL submissions
-- [ ] News API integration
-- [ ] Secondary corroboration source integration (GNews or NewsData.io) — never rely on a single aggregator
-- [ ] Google Fact Check Tools API integration
-- [ ] Fallback routing across corroboration APIs (e.g. fallback to secondary provider when rate-limited)
-- [ ] Semantic caching in Redis (URL/content hash deduplication to bypass redundant scraping/corroboration)
-- [ ] Basic composite scoring (source reputation + corroboration count, no claim-level granularity yet)
-- [ ] `POST /content` + `GET /content/{id}` endpoints (URL/text modality only)
-- [ ] Frontend: submission form + basic results view
+- [x] `sources` table + migration
+- [x] Seed source reputation DB from public datasets (MBFC-style data — verify ToS before scraping/using any dataset)
+- [x] WHOIS lookup integration (domain age signal)
+- [x] Article extraction service (readability/trafilatura) for URL submissions
+- [x] News API integration
+- [x] Secondary corroboration source integration (GNews or NewsData.io) — never rely on a single aggregator
+- [x] Google Fact Check Tools API integration
+- [x] Fallback routing across corroboration APIs (e.g. fallback to secondary provider when rate-limited)
+- [x] Semantic caching in Redis (URL/content hash deduplication to bypass redundant scraping/corroboration)
+- [x] Basic composite scoring (source reputation + corroboration count, no claim-level granularity yet)
+- [x] `POST /content` + `GET /content/{id}` endpoints (URL/text modality only)
+- [x] Frontend: submission form + basic results view
 
 ## Phase 2 — Claim-Level Verification (the "advanced" layer)
 
-- [ ] `claims` table + migration
-- [ ] LLM claim extraction service (OpenRouter — start with one strong general-purpose model)
-- [ ] Pydantic / JSON Schema structured output guards on LLM claim extraction (hallucination prevention)
-- [ ] Per-claim corroboration (route each extracted claim through Phase 1's corroboration services independently)
-- [ ] Semantic claim deduplication & similarity clustering (group identical claims phrased differently)
-- [ ] Claim verification status logic (supported / contradicted / unverified) with confidence scoring
-- [ ] Time-to-Live (TTL) & decay tracking on claim verification status to handle breaking news updates
-- [ ] Aggregation service v1: combine per-claim results into composite + dimension scores
-- [ ] `analysis_results` table with `model_version` field for auditability
-- [ ] Frontend: per-claim breakdown cards, not just a single score
-- [ ] Groq integration for latency-sensitive claim scoring calls
+- [x] `claims` table + migration
+- [x] LLM claim extraction service (OpenRouter — start with one strong general-purpose model)
+- [x] Pydantic / JSON Schema structured output guards on LLM claim extraction (hallucination prevention)
+- [x] Per-claim corroboration (route each extracted claim through Phase 1's corroboration services independently)
+- [x] Semantic claim deduplication & similarity clustering (group identical claims phrased differently)
+- [x] Claim verification status logic (supported / contradicted / unverified) with confidence scoring
+- [x] Time-to-Live (TTL) & decay tracking on claim verification status to handle breaking news updates
+- [x] Aggregation service v1: combine per-claim results into composite + dimension scores
+- [x] `analysis_results` table with `model_version` field for auditability
+- [x] Frontend: per-claim breakdown cards, not just a single score
+- [x] Groq integration for latency-sensitive claim scoring calls
 
 ## Phase 3 — Linguistic & Manipulation Analysis
 
-- [ ] Stylometric/linguistic scorer (in-house lightweight model — sentiment, subjectivity, clickbait classifier; no LLM call needed, keep this cheap and fast)
-- [ ] Manipulation tactics detector (false dichotomy, appeal to fear, cherry-picking, out-of-context quoting)
-- [ ] Satire detection (suppress false positives from known parody/satire sources)
-- [ ] Bias vs. falsehood separation — score as two independent axes, not one
-- [ ] Temporal mismatch detection (flag real-but-miscontextualized content — cross-reference claim dates against corroborating source dates)
-- [ ] Cross-lingual NLP pipeline (automatic translation of local dialects/languages to English before corroboration)
-- [ ] Adversarial prompt injection defense shield on raw text prior to LLM extraction
-- [ ] Virality/spread-risk scorer (emotional language + structural features)
-- [ ] Update aggregation service to weight in these new dimensions (versioned weights)
+- [x] Stylometric/linguistic scorer (in-house lightweight model — sentiment, subjectivity, clickbait classifier; no LLM call needed, keep this cheap and fast)
+- [x] Manipulation tactics detector (false dichotomy, appeal to fear, cherry-picking, out-of-context quoting)
+- [x] Satire detection (suppress false positives from known parody/satire sources)
+- [x] Bias vs. falsehood separation — score as two independent axes, not one
+- [x] Temporal mismatch detection (flag real-but-miscontextualized content — cross-reference claim dates against corroborating source dates)
+- [x] Cross-lingual NLP pipeline (automatic translation of local dialects/languages to English before corroboration)
+- [x] Adversarial prompt injection defense shield on raw text prior to LLM extraction
+- [x] Virality/spread-risk scorer (emotional language + structural features)
+- [x] Update aggregation service to weight in these new dimensions (versioned weights)
 
 ## Phase 4 — Multi-Modal Ingestion
 
