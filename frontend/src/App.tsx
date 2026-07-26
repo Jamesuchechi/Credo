@@ -17,6 +17,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { SourcesPage } from './pages/SourcesPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ClaimGraphPage } from './pages/ClaimGraphPage';
+import { ApiKeysPage } from './pages/ApiKeysPage';
 import { fetchHealth } from './api/client';
 import { HealthResponse } from './types';
 
@@ -146,6 +151,46 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/history"
+              element={
+                <ProtectedRoute>
+                  <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/sources"
+              element={
+                <ProtectedRoute>
+                  <SourcesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/claim-graph"
+              element={
+                <ProtectedRoute>
+                  <ClaimGraphPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/api-keys"
+              element={
+                <ProtectedRoute>
+                  <ApiKeysPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
                 </ProtectedRoute>
               }
             />

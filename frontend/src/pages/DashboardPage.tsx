@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import {
   ShieldCheck,
   Home,
   PlusCircle,
+  Clock,
   History as HistoryIcon,
   Globe,
   Share2,
@@ -17,16 +18,16 @@ import {
   Info,
   TrendingUp,
   AlertTriangle,
-  Clock,
   Link as LinkIcon,
-  FileText,
-  Video
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { submitContent } from '../api/client';
 import { AnalysisModal } from '../components/AnalysisModal';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { ModalityType } from '../types';
+import { fetchDashboardSummary } from '../api/client';
+import { fetchContentList } from '../api/client';
+import { fetchSources } from '../api/client';
+import { DashboardSummaryResponse, ContentListResponse, SourcesListResponse, ModalityType } from '../types';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,16 +38,31 @@ export const DashboardPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
 
+  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const [analyses, setAnalyses] = useState<ContentListResponse | null>(null);
+  const [analysesLoading, setAnalysesLoading] = useState(true);
+  const [analysesError, setAnalysesError] = useState<string | null>(null);
+
+  const [sources, setSources] = useState<SourcesListResponse | null>(null);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const submitCardRef = useRef<HTMLDivElement>(null);
 
-  const userInitials = user?.full_name
-    ? user.full_name
+  const userInitials =
+    user?.full_name
+      ? user.full_name
         .split(' ')
         .map((n: string) => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2)
-    : 'CR';
+      : 'CR';
 
   const handleLogout = () => {
     logout();
@@ -58,6 +74,7 @@ export const DashboardPage: React.FC = () => {
     if (!submitPayload.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     const isUrl = submitPayload.startsWith('http://') || submitPayload.startsWith('https://');
     const modality: ModalityType = activeTab === 'media' ? 'video' : isUrl ? 'url' : 'text';
 
@@ -68,9 +85,45 @@ export const DashboardPage: React.FC = () => {
       setActiveAnalysisId(res.content_id);
     } catch (err: any) {
       setIsSubmitting(false);
-      alert(err.message || 'Submission failed');
+      setSubmitError(err.message || 'Submission failed');
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      try {
+        const [sumData, analysisData, srcData] = await Promise.all([
+          fetchDashboardSummary(),
+          fetchContentList(1, 5),
+          fetchSources(1, 4),
+        ]);
+        if (!cancelled) {
+          setSummary(sumData);
+          setAnalyses(analysisData);
+          setSources(srcData);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          if (err.message.includes('Dashboard')) setSummaryError(err.message);
+          if (err.message.includes('Content')) setAnalysesError(err.message);
+          if (err.message.includes('Sources')) setSourcesError(err.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setSummaryLoading(false);
+          setAnalysesLoading(false);
+          setSourcesLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -83,9 +136,13 @@ export const DashboardPage: React.FC = () => {
     return () => ctx.revert();
   }, []);
 
+  const isActive = (to: string) => ({
+    className: ({ isActive }: { isActive: boolean }) =>
+      `side-link ${isActive ? 'is-active' : ''}`,
+  });
+
   return (
     <div className="dash-app">
-      {/* Sidebar */}
       <aside className="sidebar">
         <div className="side-brand">
           <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid var(--brass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -95,30 +152,30 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <nav className="side-nav">
-          <a className="side-link is-active" href="#">
+          <NavLink to="/dashboard" end {...isActive('/dashboard')}>
             <Home size={17} /> Overview
-          </a>
-          <a className="side-link" href="#">
+          </NavLink>
+          <NavLink to="/dashboard" {...isActive('/dashboard')}>
             <PlusCircle size={17} /> Analyze
-          </a>
-          <a className="side-link" href="#">
+          </NavLink>
+          <NavLink to="/dashboard/history" {...isActive('/dashboard/history')}>
             <HistoryIcon size={17} /> History
-          </a>
-          <a className="side-link" href="#">
+          </NavLink>
+          <NavLink to="/dashboard/sources" {...isActive('/dashboard/sources')}>
             <Globe size={17} /> Sources
-          </a>
-          <a className="side-link" href="#">
+          </NavLink>
+          <NavLink to="/dashboard/claim-graph" {...isActive('/dashboard/claim-graph')}>
             <Share2 size={17} /> Claim graph
-          </a>
-          <a className="side-link" href="#">
+          </NavLink>
+          <NavLink to="/dashboard/api-keys" {...isActive('/dashboard/api-keys')}>
             <Key size={17} /> API keys
-          </a>
+          </NavLink>
 
           <div className="side-spacer"></div>
 
-          <a className="side-link" href="#">
+          <NavLink to="/dashboard/settings" {...isActive('/dashboard/settings')}>
             <Settings size={17} /> Settings
-          </a>
+          </NavLink>
 
           <div className="side-user">
             <div className="side-avatar">{userInitials}</div>
@@ -133,7 +190,6 @@ export const DashboardPage: React.FC = () => {
         </nav>
       </aside>
 
-      {/* Main Content Area */}
       <div className="main">
         <header className="topbar">
           <div>
@@ -153,25 +209,22 @@ export const DashboardPage: React.FC = () => {
         </header>
 
         <div className="content">
-          {/* Quick Submit Card */}
+          {submitError && (
+            <div className="submit-error">
+              <span>{submitError}</span>
+              <button onClick={() => setSubmitError(null)}>Dismiss</button>
+            </div>
+          )}
+
           <div className="submit-card" id="submitCard" ref={submitCardRef}>
             <div className="submit-tabs">
-              <button
-                className={`submit-tab ${activeTab === 'link' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('link')}
-              >
+              <button className={`submit-tab ${activeTab === 'link' ? 'is-active' : ''}`} onClick={() => setActiveTab('link')}>
                 Link
               </button>
-              <button
-                className={`submit-tab ${activeTab === 'text' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('text')}
-              >
+              <button className={`submit-tab ${activeTab === 'text' ? 'is-active' : ''}`} onClick={() => setActiveTab('text')}>
                 Text
               </button>
-              <button
-                className={`submit-tab ${activeTab === 'media' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('media')}
-              >
+              <button className={`submit-tab ${activeTab === 'media' ? 'is-active' : ''}`} onClick={() => setActiveTab('media')}>
                 Media
               </button>
             </div>
@@ -184,8 +237,8 @@ export const DashboardPage: React.FC = () => {
                     activeTab === 'link'
                       ? 'Paste a URL to analyze — an article, a post, anything with a claim in it'
                       : activeTab === 'text'
-                      ? 'Paste claim text, press release, or excerpt to verify'
-                      : 'Paste media URL or video clip link'
+                        ? 'Paste claim text, press release, or excerpt to verify'
+                        : 'Paste media URL or video clip link'
                   }
                   value={submitPayload}
                   onChange={(e) => setSubmitPayload(e.target.value)}
@@ -202,15 +255,26 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Stats Row */}
           <div className="stat-row" id="statRow">
             <div className="stat-card">
               <div className="stat-top">
                 <span className="stat-label">Analyzed this week</span>
                 <TrendingUp className="stat-icon" size={16} />
               </div>
-              <div className="stat-value">126</div>
-              <div className="stat-delta">+18 vs last week</div>
+              {summaryLoading ? (
+                <div className="stat-value skeleton">---</div>
+              ) : summaryError ? (
+                <div className="stat-value" style={{ color: 'var(--disputed)' }}>—</div>
+              ) : (
+                <>
+                  <div className="stat-value">{summary?.analyses_count_this_week ?? 0}</div>
+                  <div className="stat-delta">
+                    {summary?.avg_factual_accuracy != null
+                      ? `Avg accuracy ${summary.avg_factual_accuracy}%`
+                      : 'No data yet'}
+                  </div>
+                </>
+              )}
               <svg className="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
                 <polyline points="0,20 15,18 30,14 45,16 60,9 75,11 100,4" fill="none" stroke="#3ECFB5" strokeWidth="2" />
               </svg>
@@ -221,8 +285,16 @@ export const DashboardPage: React.FC = () => {
                 <span className="stat-label">Avg factual accuracy</span>
                 <ShieldCheck className="stat-icon" size={16} />
               </div>
-              <div className="stat-value">71%</div>
-              <div className="stat-delta">across 5 dimensions</div>
+              {summaryLoading ? (
+                <div className="stat-value skeleton">---</div>
+              ) : summaryError ? (
+                <div className="stat-value" style={{ color: 'var(--disputed)' }}>—</div>
+              ) : (
+                <>
+                  <div className="stat-value">{summary?.avg_factual_accuracy != null ? `${summary.avg_factual_accuracy}%` : '—'}</div>
+                  <div className="stat-delta">across analyses this week</div>
+                </>
+              )}
               <svg className="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
                 <polyline points="0,10 15,13 30,9 45,15 60,12 75,8 100,10" fill="none" stroke="#D9A94E" strokeWidth="2" />
               </svg>
@@ -233,8 +305,16 @@ export const DashboardPage: React.FC = () => {
                 <span className="stat-label">Sources flagged</span>
                 <AlertTriangle className="stat-icon" size={16} />
               </div>
-              <div className="stat-value down">9</div>
-              <div className="stat-delta">low reputation this week</div>
+              {summaryLoading ? (
+                <div className="stat-value skeleton">---</div>
+              ) : summaryError ? (
+                <div className="stat-value" style={{ color: 'var(--disputed)' }}>—</div>
+              ) : (
+                <>
+                  <div className="stat-value down">{summary?.sources_flagged_count ?? 0}</div>
+                  <div className="stat-delta">low reputation this week</div>
+                </>
+              )}
               <svg className="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
                 <polyline points="0,6 15,10 30,8 45,14 60,16 75,20 100,22" fill="none" stroke="#D9695F" strokeWidth="2" />
               </svg>
@@ -245,125 +325,103 @@ export const DashboardPage: React.FC = () => {
                 <span className="stat-label">Avg turnaround</span>
                 <Clock className="stat-icon" size={16} />
               </div>
-              <div className="stat-value">42s</div>
-              <div className="stat-delta">per claim, end to end</div>
+              {summaryLoading ? (
+                <div className="stat-value skeleton">---</div>
+              ) : summaryError ? (
+                <div className="stat-value" style={{ color: 'var(--disputed)' }}>—</div>
+              ) : (
+                <>
+                  <div className="stat-value">{summary?.avg_turnaround_seconds != null ? `${Math.round(summary.avg_turnaround_seconds)}s` : '—'}</div>
+                  <div className="stat-delta">per claim, end to end</div>
+                </>
+              )}
               <svg className="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
                 <polyline points="0,18 15,16 30,17 45,12 60,13 75,10 100,9" fill="none" stroke="#3ECFB5" strokeWidth="2" />
               </svg>
             </div>
           </div>
 
-          {/* Split: Recent Analyses + Side Rail */}
           <div className="split">
             <div className="panel">
               <div className="panel-head">
                 <span className="panel-title">Recent analyses</span>
-                <a className="panel-link" href="#">View all history →</a>
+                <NavLink className="panel-link" to="/dashboard/history">
+                  View all history →
+                </NavLink>
               </div>
               <div id="analysesList">
-                <div className="arow">
-                  <div className="arow-icon"><LinkIcon size={16} /></div>
-                  <div className="arow-body">
-                    <div className="arow-title">"The bridge collapsed within minutes of opening, engineers confirm."</div>
-                    <div className="arow-meta">infrabuild-news.com · 3 claims checked</div>
+                {analysesLoading ? (
+                  <div className="arow" style={{ opacity: 1, transform: 'none' }}>
+                    <div className="arow-body">
+                      <div className="arow-title" style={{ color: 'var(--text-dim)' }}>Loading analyses…</div>
+                    </div>
                   </div>
-                  <svg className="radar" viewBox="0 0 40 40">
-                    <polygon points="20,4 34,15 29,33 11,33 6,15" fill="none" stroke="rgba(241,238,230,0.12)" strokeWidth="1" />
-                    <polygon points="20,10 28,17 25,28 15,28 12,17" fill="rgba(217,105,95,0.25)" stroke="#D9695F" strokeWidth="1.4" />
-                  </svg>
-                  <span className="verdict v-disputed">Disputed</span>
-                  <span className="arow-time">2m ago</span>
-                </div>
-
-                <div className="arow">
-                  <div className="arow-icon"><FileText size={16} /></div>
-                  <div className="arow-body">
-                    <div className="arow-title">Viral post claiming a new vaccine mandate starts next month</div>
-                    <div className="arow-meta">@newsflash_247 · 2 claims checked</div>
+                ) : analysesError ? (
+                  <div className="arow" style={{ opacity: 1, transform: 'none' }}>
+                    <div className="arow-body">
+                      <div className="arow-title" style={{ color: 'var(--disputed)' }}>Failed to load analyses</div>
+                    </div>
                   </div>
-                  <svg className="radar" viewBox="0 0 40 40">
-                    <polygon points="20,4 34,15 29,33 11,33 6,15" fill="none" stroke="rgba(241,238,230,0.12)" strokeWidth="1" />
-                    <polygon points="20,7 31,16 27,30 13,30 9,16" fill="rgba(224,185,78,0.25)" stroke="#E0B94E" strokeWidth="1.4" />
-                  </svg>
-                  <span className="verdict v-mixed">Mixed</span>
-                  <span className="arow-time">19m ago</span>
-                </div>
-
-                <div className="arow">
-                  <div className="arow-icon"><Video size={16} /></div>
-                  <div className="arow-body">
-                    <div className="arow-title">Clip circulating as "live footage from today's protest"</div>
-                    <div className="arow-meta">forwarded video · temporal check flagged</div>
+                ) : analyses && analyses.items.length === 0 ? (
+                  <div className="arow" style={{ opacity: 1, transform: 'none' }}>
+                    <div className="arow-body">
+                      <div className="arow-title">No analyses yet — submit your first link above</div>
+                    </div>
                   </div>
-                  <svg className="radar" viewBox="0 0 40 40">
-                    <polygon points="20,4 34,15 29,33 11,33 6,15" fill="none" stroke="rgba(241,238,230,0.12)" strokeWidth="1" />
-                    <polygon points="20,9 30,17 26,29 14,29 10,17" fill="rgba(224,185,78,0.25)" stroke="#E0B94E" strokeWidth="1.4" />
-                  </svg>
-                  <span className="verdict v-mixed">Mixed</span>
-                  <span className="arow-time">41m ago</span>
-                </div>
-
-                <div className="arow">
-                  <div className="arow-icon"><LinkIcon size={16} /></div>
-                  <div className="arow-body">
-                    <div className="arow-title">Reuters report on the central bank's rate decision</div>
-                    <div className="arow-meta">reuters.com · 6 claims checked</div>
-                  </div>
-                  <svg className="radar" viewBox="0 0 40 40">
-                    <polygon points="20,4 34,15 29,33 11,33 6,15" fill="none" stroke="rgba(241,238,230,0.12)" strokeWidth="1" />
-                    <polygon points="20,5 33,15 28,32 12,32 7,15" fill="rgba(62,207,181,0.22)" stroke="#3ECFB5" strokeWidth="1.4" />
-                  </svg>
-                  <span className="verdict v-verified">Verified</span>
-                  <span className="arow-time">1h ago</span>
-                </div>
-
-                <div className="arow">
-                  <div className="arow-icon"><FileText size={16} /></div>
-                  <div className="arow-body">
-                    <div className="arow-title">Forwarded screenshot claiming school closures state-wide</div>
-                    <div className="arow-meta">WhatsApp forward · OCR extracted</div>
-                  </div>
-                  <svg className="radar" viewBox="0 0 40 40">
-                    <polygon points="20,4 34,15 29,33 11,33 6,15" fill="none" stroke="rgba(241,238,230,0.12)" strokeWidth="1" />
-                    <polygon points="20,11 27,18 24,27 16,27 13,18" fill="rgba(217,105,95,0.25)" stroke="#D9695F" strokeWidth="1.4" />
-                  </svg>
-                  <span className="verdict v-disputed">Disputed</span>
-                  <span className="arow-time">3h ago</span>
-                </div>
+                ) : (
+                  analyses?.items.map((item: any) => {
+                    return (
+                      <div className="arow" key={item.id}>
+                        <div className="arow-icon">
+                          <LinkIcon size={16} />
+                        </div>
+                        <div className="arow-body">
+                          <div className="arow-title">{item.title || 'Untitled analysis'}</div>
+                          <div className="arow-meta">
+                            {item.source_domain || 'unknown source'} · {item.claims_count} claim{item.claims_count !== 1 ? 's' : ''} checked
+                          </div>
+                        </div>
+                        <span className={`verdict v-${item.verdict || 'unverified'}`}>
+                          {(item.verdict || 'Unverified').charAt(0).toUpperCase() + (item.verdict || 'Unverified').slice(1)}
+                        </span>
+                        <span className="arow-time">{new Date(item.created_at).toLocaleTimeString()}</span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
-            {/* Side Rail */}
             <div className="rail">
               <div className="panel">
                 <div className="panel-head">
                   <span className="panel-title">Sources to watch</span>
-                  <a className="panel-link" href="#">All →</a>
+                  <NavLink className="panel-link" to="/dashboard/sources">
+                    All →
+                  </NavLink>
                 </div>
-                <div className="source-row">
-                  <span className="source-dot" style={{ background: '#D9695F' }}></span>
-                  <span className="source-name">infrabuild-news.com</span>
-                  <span className="source-score">22</span>
-                  <span className="source-trend trend-down">↓ 4</span>
-                </div>
-                <div className="source-row">
-                  <span className="source-dot" style={{ background: '#E0B94E' }}></span>
-                  <span className="source-name">dailywire-247.net</span>
-                  <span className="source-score">54</span>
-                  <span className="source-trend trend-down">↓ 2</span>
-                </div>
-                <div className="source-row">
-                  <span className="source-dot" style={{ background: '#3ECFB5' }}></span>
-                  <span className="source-name">reuters.com</span>
-                  <span className="source-score">96</span>
-                  <span className="source-trend trend-up">↑ 1</span>
-                </div>
-                <div className="source-row">
-                  <span className="source-dot" style={{ background: '#E0B94E' }}></span>
-                  <span className="source-name">local-blog.io</span>
-                  <span className="source-score">48</span>
-                  <span className="source-trend trend-down">↓ 6</span>
-                </div>
+                {sourcesLoading ? (
+                  <div className="source-row">
+                    <span className="source-name" style={{ color: 'var(--text-dim)' }}>Loading…</span>
+                  </div>
+                ) : sourcesError ? (
+                  <div className="source-row">
+                    <span className="source-name" style={{ color: 'var(--disputed)' }}>Failed to load</span>
+                  </div>
+                ) : sources && sources.items.length === 0 ? (
+                  <div className="source-row">
+                    <span className="source-name" style={{ color: 'var(--text-dim)' }}>No sources tracked yet</span>
+                  </div>
+                ) : (
+                  sources?.items.map((source) => (
+                    <div className="source-row" key={source.id}>
+                      <span className="source-dot" style={{ background: source.score >= 80 ? '#3ECFB5' : source.score >= 60 ? '#E0B94E' : '#D9695F' }}></span>
+                      <span className="source-name">{source.domain}</span>
+                      <span className="source-score">{source.score.toFixed(0)}</span>
+                      <span className="source-trend" style={{ color: 'var(--text-faint)' }}>{source.trend_label}</span>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="panel">
@@ -372,23 +430,20 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <div className="graph-teaser">
                   <div className="graph-mini-row">
-                    <span className="graph-mini-node">claim_014</span>
+                    <span className="graph-mini-node">claims</span>
                     <span className="graph-mini-arrow">→</span>
-                    <span className="graph-mini-node">Reuters</span>
+                    <span className="graph-mini-node">interactive view</span>
                   </div>
-                  <div className="graph-mini-row">
-                    <span className="graph-mini-node">claim_015</span>
-                    <span className="graph-mini-arrow">→</span>
-                    <span className="graph-mini-node">local-blog.io</span>
-                  </div>
-                  <a className="graph-cta" href="#">Explore the full graph →</a>
+                  <NavLink className="graph-cta" to="/dashboard/claim-graph">
+                    Explore the full graph →
+                  </NavLink>
                 </div>
               </div>
 
               <div className="panel">
                 <div className="version-footer">
                   <span>SCORING MODEL</span>
-                  <span>v1.2.0-phase1</span>
+                  <span>v3.0.0-phase3</span>
                 </div>
               </div>
             </div>
@@ -447,6 +502,7 @@ export const DashboardPage: React.FC = () => {
           font-size: 13.5px;
           font-weight: 500;
           color: var(--text-dim);
+          text-decoration: none;
           transition: background .18s ease, color .18s ease;
         }
 
@@ -455,7 +511,8 @@ export const DashboardPage: React.FC = () => {
           color: var(--text);
         }
 
-        .side-link.is-active {
+        .side-link.is-active,
+        .side-link.active {
           background: var(--brass-dim);
           color: var(--brass);
         }
@@ -568,6 +625,30 @@ export const DashboardPage: React.FC = () => {
           gap: 26px;
         }
 
+        .submit-error {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 18px;
+          background: var(--disputed-dim);
+          border: 1px solid var(--disputed);
+          border-radius: var(--radius);
+          font-size: 13px;
+          color: var(--disputed);
+        }
+
+        .submit-error button {
+          background: var(--disputed);
+          color: var(--ink);
+          border: none;
+          padding: 4px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
         .submit-card {
           background: var(--surface);
           border: 1px solid var(--line);
@@ -590,6 +671,9 @@ export const DashboardPage: React.FC = () => {
           border-radius: 100px;
           color: var(--text-dim);
           transition: background .18s ease, color .18s ease;
+          cursor: pointer;
+          background: none;
+          border: none;
         }
 
         .submit-tab.is-active {
@@ -666,6 +750,7 @@ export const DashboardPage: React.FC = () => {
 
         .stat-value.up { color: var(--verified); }
         .stat-value.down { color: var(--disputed); }
+        .stat-value.skeleton { color: var(--text-dim); opacity: 0.5; }
 
         .stat-delta {
           font-size: 11.5px;
@@ -712,6 +797,7 @@ export const DashboardPage: React.FC = () => {
           font-size: 12px;
           color: var(--text-dim);
           font-weight: 600;
+          text-decoration: none;
         }
 
         .panel-link:hover { color: var(--brass); }
@@ -773,6 +859,7 @@ export const DashboardPage: React.FC = () => {
         .v-verified { background: var(--verified-dim); color: var(--verified); }
         .v-disputed { background: var(--disputed-dim); color: var(--disputed); }
         .v-mixed { background: var(--mislead-dim); color: var(--mislead); }
+        .v-unverified { background: var(--surface-2); color: var(--text-dim); }
 
         .arow-time {
           font-size: 11.5px;
@@ -806,8 +893,6 @@ export const DashboardPage: React.FC = () => {
         }
         .source-score { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
         .source-trend { font-size: 11px; font-family: var(--mono); width: 34px; text-align: right; }
-        .trend-up { color: var(--verified); }
-        .trend-down { color: var(--disputed); }
 
         .graph-teaser { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
         .graph-mini-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
@@ -820,7 +905,8 @@ export const DashboardPage: React.FC = () => {
           color: var(--text-dim);
         }
         .graph-mini-arrow { color: var(--text-faint); }
-        .graph-cta { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--brass); display: flex; align-items: center; gap: 6px; }
+        .graph-cta { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--brass); display: flex; align-items: center; gap: 6px; text-decoration: none; }
+        .graph-cta:hover { text-decoration: underline; }
 
         .version-footer {
           padding: 14px 18px;

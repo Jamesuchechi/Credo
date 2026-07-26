@@ -3,6 +3,7 @@ from typing import Any
 
 import httpx
 import trafilatura
+from app.services.pii_redactor import redact_pii
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,12 @@ async def extract_article_content(url: str) -> dict[str, Any]:
         if not extracted_text:
             extracted_text = html_content[:2000]
 
+        # redact PII from extracted text
+        cleaned = redact_pii(extracted_text or "")
+
         return {
             "title": title or "Untitled Article",
-            "extracted_text": extracted_text or "",
+            "extracted_text": cleaned,
             "raw_html_length": len(html_content),
             "success": True
         }

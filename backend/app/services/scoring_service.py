@@ -74,8 +74,34 @@ def compute_phase3_composite_score(
             f"Independent Bias Axis: {source.bias_rating if source else 'center'}."
         )
 
+    # 7. Confidence Interval (0-100 bounds)
+    if claims:
+        import statistics
+        claim_scores_for_ci = []
+        for c in claims:
+            if c.verdict == "supported":
+                claim_scores_for_ci.append(c.confidence_score)
+            elif c.verdict == "contradicted":
+                claim_scores_for_ci.append(100.0 - c.confidence_score)
+            else:
+                claim_scores_for_ci.append(45.0)
+        if len(claim_scores_for_ci) > 1:
+            std_dev = statistics.stdev(claim_scores_for_ci)
+            margin = min(12.0, max(3.0, std_dev / (len(claim_scores_for_ci) ** 0.5)))
+        else:
+            margin = 8.0
+    else:
+        margin = 10.0
+
+    confidence_interval = {
+        "lower": round(max(0.0, composite - margin), 1),
+        "upper": round(min(100.0, composite + margin), 1),
+        "margin": round(margin, 1),
+    }
+
     return {
         "composite_score": composite,
+        "confidence_interval": confidence_interval,
         "dimension_scores": {
             "factual_accuracy": round(factual_accuracy, 1),
             "source_reputation": round(source_score, 1),

@@ -12,6 +12,7 @@ class ContentItem(Base):
     __tablename__ = "content_items"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     modality: Mapped[str] = mapped_column(String(50), nullable=False, default="url")
     content_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -22,5 +23,6 @@ class ContentItem(Base):
     status: Mapped[str] = mapped_column(String(50), default="queued", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    user = relationship("User", lazy="joined")
     source = relationship("Source", lazy="joined")
     claims = relationship("Claim", back_populates="content_item", cascade="all, delete-orphan")

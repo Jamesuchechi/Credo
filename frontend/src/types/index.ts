@@ -57,6 +57,11 @@ export interface ClaimItem {
   extracted_speaker?: string;
   verdict: 'supported' | 'contradicted' | 'unverified';
   confidence_score: number;
+  confidence_interval?: {
+    lower: number;
+    upper: number;
+    margin: number;
+  };
   evidence_summary: string;
   reasoning_chain?: {
     notes?: string;
@@ -73,6 +78,11 @@ export interface ContentAnalysisResponse {
   title?: string;
   status: 'queued' | 'processing' | 'complete' | 'failed';
   composite_score?: number;
+  confidence_interval?: {
+    lower: number;
+    upper: number;
+    margin: number;
+  };
   dimension_scores?: DimensionScores;
   reasoning_chain?: ReasoningChain;
   corroborating_sources?: CorroboratingSource[];
@@ -82,18 +92,58 @@ export interface ContentAnalysisResponse {
 }
 
 export interface SourceResponse {
-  id: string;
-  domain: string;
-  name: string;
-  historical_accuracy_score: number;
-  bias_rating: string;
-  whois_age_days?: number;
-  is_known_satire: boolean;
-  is_known_misinfo: boolean;
-  label: string;
-}
-
-export interface UserCreate {
+   id: string;
+   domain: string;
+   name: string;
+   historical_accuracy_score: number;
+   bias_rating: string;
+   whois_age_days?: number;
+   is_known_satire: boolean;
+   is_known_misinfo: boolean;
+   label: string;
+ }
+ 
+ export interface ContentItemSummary {
+   id: string;
+   title: string | null;
+   source_domain: string | null;
+   status: string;
+   verdict: string | null;
+   claims_count: number;
+   composite_score: number | null;
+   created_at: string;
+ }
+ 
+ export interface ContentListResponse {
+   items: ContentItemSummary[];
+   total: number;
+   page: number;
+   page_size: number;
+ }
+ 
+ export interface DashboardSummaryResponse {
+   analyses_count_this_week: number;
+   avg_factual_accuracy: number | null;
+   sources_flagged_count: number;
+   avg_turnaround_seconds: number | null;
+ }
+ 
+ export interface SourceListItem {
+   id: string;
+   domain: string;
+   name: string;
+   score: number;
+   trend_label: string;
+ }
+ 
+ export interface SourcesListResponse {
+   items: SourceListItem[];
+   total: number;
+   page: number;
+   page_size: number;
+ }
+ 
+ export interface UserCreate {
   email: string;
   password: string;
   full_name: string;
@@ -116,4 +166,33 @@ export interface HealthResponse {
   status: string;
   version: string;
   redis: string;
+}
+
+export interface ModelVersionEntry {
+  version: string;
+  date: string;
+  title: string;
+  changes: string[];
+}
+
+export interface ModelVersionChangelogResponse {
+  current_version: string;
+  entries: ModelVersionEntry[];
+}
+
+export interface CredibilityCardResponse {
+  content_id: string;
+  title: string | null;
+  composite_score: number | null;
+  confidence_interval: {
+    lower: number;
+    upper: number;
+    margin: number;
+  } | null;
+  dimension_scores: Record<string, any> | null;
+  verdict: string | null;
+  claims_count: number;
+  model_version: string | null;
+  created_at: string;
+  source_domain: string | null;
 }

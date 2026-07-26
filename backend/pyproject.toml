@@ -22,6 +22,7 @@ dependencies = [
     "tldextract>=5.1.0",
     "python-whois>=0.8.0",
     "email-validator>=2.1.0",
+    "pillow>=12.3.0",
 ]
 
 [project.optional-dependencies]

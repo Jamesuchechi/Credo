@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, AlertTriangle, ExternalLink, ShieldCheck, Loader2 } from 'lucide-react';
-import { getContentAnalysis } from '../api/client';
+import { X, AlertTriangle, ExternalLink, ShieldCheck, Loader2, History, Share2 } from 'lucide-react';
+import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard } from '../api/client';
 import { ContentAnalysisResponse } from '../types';
+import { ModelVersionChangelogModal } from './ModelVersionChangelogModal';
 
 interface AnalysisModalProps {
   contentId: string | null;
@@ -11,34 +12,71 @@ interface AnalysisModalProps {
 export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose }) => {
   const [analysis, setAnalysis] = useState<ContentAnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<string>('queued');
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!contentId) return;
 
-    let isSubscribed = true;
-    let timer: ReturnType<typeof setTimeout>;
+    setAnalysis(null);
+    setError(null);
+    setPhase('queued');
 
-    const poll = async () => {
-      try {
-        const data = await getContentAnalysis(contentId);
+    let isSubscribed = true;
+    let pollingTimer: ReturnType<typeof setTimeout>;
+
+    const cleanup = streamAnalysisProgress(
+      contentId,
+      (newPhase: string) => {
+        if (isSubscribed) {
+          setPhase(newPhase);
+        }
+      },
+      (data: ContentAnalysisResponse) => {
         if (isSubscribed) {
           setAnalysis(data);
-          if (data.status === 'queued' || data.status === 'processing') {
-            timer = setTimeout(poll, 1500);
-          }
+          setPhase('complete');
         }
-      } catch (err: any) {
+      },
+      (message: string) => {
         if (isSubscribed) {
-          setError(err.message || 'Error loading analysis result');
+          setError(message);
+          setPhase('failed');
         }
       }
+    );
+
+    const fallbackPoll = () => {
+      if (!isSubscribed) return;
+      if (phase === 'complete' || phase === 'failed') return;
+
+      getContentAnalysis(contentId)
+        .then((data) => {
+          if (isSubscribed && (data.status === 'complete' || data.status === 'failed')) {
+            if (data.status === 'complete') {
+              setAnalysis(data);
+              setPhase('complete');
+            } else {
+              setError('Analysis failed');
+              setPhase('failed');
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (isSubscribed && phase !== 'complete' && phase !== 'failed') {
+            pollingTimer = setTimeout(fallbackPoll, 3000);
+          }
+        });
     };
 
-    poll();
+    pollingTimer = setTimeout(fallbackPoll, 3000);
 
     return () => {
       isSubscribed = false;
-      if (timer) clearTimeout(timer);
+      cleanup();
+      if (pollingTimer) clearTimeout(pollingTimer);
     };
   }, [contentId]);
 
@@ -46,7 +84,7 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
 
   const score = analysis?.composite_score ?? 0;
   const isComplete = analysis?.status === 'complete';
-  const isProcessing = analysis?.status === 'processing' || analysis?.status === 'queued';
+  const isProcessing = phase !== 'complete' && phase !== 'failed' && !error;
 
   return (
     <div
@@ -108,6 +146,11 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
               Extracting factual assertions, performing WHOIS domain lookup, and corroborating against
               independent news databases.
             </p>
+            {phase !== 'queued' && (
+              <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginTop: '12px', fontFamily: 'var(--mono)' }}>
+                Phase: {phase}
+              </p>
+            )}
           </div>
         )}
 
@@ -126,6 +169,78 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
               <span style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--brass)', letterSpacing: '0.06em' }}>
                 CREDO / ANALYSIS RESULT ({analysis.model_version})
               </span>
+              <button
+                onClick={() => setShowChangelog(true)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--mono)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <History size={12} />
+                Changelog
+              </button>
+              <button
+                onClick={async () => {
+                  if (!contentId) return;
+                  setIsExporting(true);
+                  try {
+                    const card = await fetchCredibilityCard(contentId);
+                    const text = [
+                      `Credo Credibility Card`,
+                      `=======================`,
+                      ``,
+                      `Score: ${card.composite_score?.toFixed(1) ?? 'N/A'} / 100`,
+                      card.confidence_interval ? `Range: ${card.confidence_interval.lower} — ${card.confidence_interval.upper}` : '',
+                      `Verdict: ${card.verdict ?? 'N/A'}`,
+                      `Claims Checked: ${card.claims_count}`,
+                      `Model: ${card.model_version ?? 'N/A'}`,
+                      card.source_domain ? `Source: ${card.source_domain}` : '',
+                      `Date: ${new Date(card.created_at).toLocaleString()}`,
+                    ].filter(Boolean).join('\n');
+
+                    if (navigator.share) {
+                      await navigator.share({
+                        title: 'Credo Credibility Card',
+                        text,
+                      });
+                    } else if (navigator.clipboard) {
+                      await navigator.clipboard.writeText(text);
+                      alert('Credibility card copied to clipboard');
+                    }
+                  } catch (e) {
+                    console.error('Export failed', e);
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+                disabled={isExporting}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--mono)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginLeft: 'auto',
+                }}
+              >
+                <Share2 size={12} />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
             </div>
 
             <h2 style={{ fontFamily: 'var(--serif)', fontSize: '26px', lineHeight: 1.3, marginBottom: '16px' }}>
@@ -158,6 +273,11 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
                 >
                   {score.toFixed(1)} / 100
                 </div>
+                {analysis.confidence_interval && (
+                  <div style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--text-dim)', marginTop: '4px' }}>
+                    95% CI: {analysis.confidence_interval.lower} — {analysis.confidence_interval.upper} (±{analysis.confidence_interval.margin})
+                  </div>
+                )}
               </div>
               <div
                 style={{
@@ -363,6 +483,11 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
                           </div>
                           <span style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--brass)', fontWeight: 600 }}>
                             {claim.confidence_score.toFixed(0)}% Confidence
+                            {claim.confidence_interval && (
+                              <span style={{ color: 'var(--text-dim)', marginLeft: '6px' }}>
+                                ({claim.confidence_interval.lower} — {claim.confidence_interval.upper})
+                              </span>
+                            )}
                           </span>
                         </div>
 
@@ -444,6 +569,7 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
           to { transform: rotate(360deg); }
         }
       `}</style>
+      <ModelVersionChangelogModal isOpen={showChangelog} onClose={() => setShowChangelog(false)} />
     </div>
   );
 };

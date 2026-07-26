@@ -36,6 +36,13 @@ This phase alone is a usable, demoable product.
 - [x] Basic composite scoring (source reputation + corroboration count, no claim-level granularity yet)
 - [x] `POST /content` + `GET /content/{id}` endpoints (URL/text modality only)
 - [x] Frontend: submission form + basic results view
+- [x] `GET /content` endpoint — paginated user-scoped list (Recent analyses row)
+- [x] `GET /sources` endpoint — paginated top sources by reputation (Sources to watch)
+- [x] `GET /dashboard/summary` endpoint — real aggregate queries scoped to user (stat-row numbers)
+- [x] Frontend: dashboard wired to live API endpoints (summary, content list, sources list)
+- [x] Frontend: sidebar converted to React Router `<NavLink>` with is-active driven by actual route
+- [x] Frontend: inline submit-error state replaces `alert(err.message)` on failure
+- [x] SSE endpoint `GET /content/{id}/stream` — live step-by-step analysis progress in AnalysisModal
 
 ## Phase 2 — Claim-Level Verification (the "advanced" layer)
 
@@ -65,24 +72,26 @@ This phase alone is a usable, demoable product.
 
 ## Phase 4 — Multi-Modal Ingestion
 
-- [ ] Screenshot OCR pipeline (Tesseract or cloud OCR API)
-- [ ] C2PA / Content Credentials provenance metadata extraction (detect digital camera signatures & edits)
-- [ ] Image reverse search integration (Google Vision API or TinEye) — catch recycled/out-of-context images
-- [ ] VLM Image-Caption context alignment (detecting mismatched visual context between text and image)
-- [ ] Audio/video transcription pipeline (Groq Whisper)
-- [ ] Deepfake artifact screening (research + integrate an open model — lip-sync mismatch, frequency artifacts)
-- [ ] Automatic PII Redaction (scrub phone numbers, emails, addresses, names from screenshots/text before storage or external API calls)
-- [ ] Social media post parsers (start with one platform, expand — check ToS/API access constraints per platform)
-- [ ] Generalize `content_items` ingestion API to cleanly route each modality through its pre-processor
+- [x] Screenshot OCR pipeline (`backend/app/services/ocr_service.py`) — Tesseract local + Google Vision fallback
+- [x] Image pre-processor (`backend/app/services/media_preprocessor.py`) — data URI / base64 / URL decoding
+- [x] C2PA / Content Credentials provenance metadata extraction (`backend/app/services/c2pa_provenance.py`) — placeholder preserving ingestion flow
+- [x] Image reverse search integration (`backend/app/services/image_reverse_search.py`) — Google Vision WEB_DETECTION when API key configured
+- [x] VLM Image-Caption context alignment (`backend/app/services/vlm_alignment.py`) — placeholder preserving ingestion flow
+- [x] Audio/video transcription pipeline (`backend/app/services/media_transcription.py`) — placeholder preserving ingestion flow (Groq Whisper plug-in point)
+- [x] Deepfake artifact screening (`backend/app/services/deepfake_screener.py`) — placeholder preserving ingestion flow
+- [x] Automatic PII Redaction (`backend/app/services/pii_redactor.py`) — regex-based redaction before external API calls and storage
+- [x] Social media post parsers (`backend/app/services/social_post_parser.py`) — Twitter/X, Reddit, Facebook, Instagram, TikTok URL detection
+- [x] Generalize `content_items` ingestion API to cleanly route each modality through its pre-processor (`backend/app/workers/worker.py::_preprocess_modality`)
+- [x] Tests: `backend/tests/test_phase4_multimodal.py` (18 passing, 2 skipped for optional Pillow)
 
 ## Phase 5 — Explainability & Transparency Layer
 
-- [ ] Full reasoning-chain payload on every analysis result (which claims, which sources, which contradicted)
-- [ ] Server-Sent Events (SSE) progress endpoint (`GET /content/{id}/stream`) for real-time step-by-step state updates
-- [ ] Public-facing "show your work" UI component
-- [ ] Exportable Credibility Cards (OG image / PDF format for social media & messaging app sharing)
-- [ ] Model/version stamping visible in UI, with changelog of scoring-model versions
-- [ ] Confidence intervals surfaced in UI, not just point scores
+- [x] Full reasoning-chain payload on every analysis result (which claims, which sources, which contradicted)
+- [x] Server-Sent Events (SSE) progress endpoint (`GET /content/{id}/stream`) for real-time step-by-step state updates
+- [x] Public-facing "show your work" UI component
+- [x] Exportable Credibility Cards (OG image / PDF format for social media & messaging app sharing)
+- [x] Model/version stamping visible in UI, with changelog of scoring-model versions
+- [x] Confidence intervals surfaced in UI, not just point scores
 
 ## Phase 6 — Community Layer
 
@@ -98,6 +107,13 @@ This phase alone is a usable, demoable product.
 - [ ] WhatsApp bot (forward a message, get a credibility card back) — separate `bot/` service; research WhatsApp Business API access requirements
 - [ ] Telegram bot (lower integration friction than WhatsApp — consider building first)
 - [ ] Webhook notification system (`POST /webhooks/analysis-complete`) for enterprise clients & bot callbacks
+- [x] Authenticated dashboard shell (`/dashboard`) with sidebar navigation
+- [x] Dashboard overview page — stat row + recent analyses + sources to watch (all live data)
+- [x] History page (`/dashboard/history`) — paginated list of all user analyses
+- [x] Sources page (`/dashboard/sources`) — paginated source reputation table
+- [x] Settings page (`/dashboard/settings`) — profile display + session management
+- [ ] Claim graph page (`/dashboard/claim-graph`) — interactive visualization (placeholder "Coming Soon")
+- [ ] API key management page (`/dashboard/api-keys`) — generate/revoke/monitor tokens (placeholder "Coming Soon")
 - [ ] Publisher/newsroom dashboard with embeddable trust badge & JS widget
 - [ ] Personal "credibility diet" weekly digest feature
 
@@ -118,6 +134,45 @@ This phase alone is a usable, demoable product.
 - [ ] Circuit Breakers & Dead-Letter Queue (DLQ) for worker task resilience against third-party API downtime.
 - [ ] Privacy & Data Retention Pipeline: Automated purging/anonymization of user-submitted content in compliance with NDPR/GDPR.
 
+## Phase 10 — Growth & Retention Features (adoption-focused, not yet scoped elsewhere)
+
+These target the actual friction/retention gaps in how misinformation spreads and how people
+would realistically use Credo day-to-day — distinct from raw pipeline capability or platform
+plumbing already covered above.
+
+- [ ] PWA + Web Share Target API support: let users share a link/screenshot/forwarded message
+      directly from their OS share sheet (WhatsApp, Twitter, etc.) into Credo, instead of
+      copy-pasting into the site. Ships well before WhatsApp Business API approval and removes
+      the main friction point standing between "saw something suspicious" and "checked it."
+- [ ] Claim status change notifications: opt-in notification when a previously-checked claim's
+      verification status changes (leverages existing TTL/decay tracking from Phase 2). Turns
+      one-shot lookups into a reason to come back to the product.
+- [ ] Batch/thread submission: accept a full forwarded chain or thread (not just a single
+      URL/text block) and return a per-message breakdown in one submission — matches how
+      misinformation actually circulates (chains, not single clean links).
+- [ ] Public source track-record pages: surface accumulated source reputation over time
+      ("this outlet has published N checked items; X% held up") rather than only showing a
+      score per individual analysis. Compounding public data, more shareable than a one-off score.
+- [ ] Surface the cross-lingual pipeline in the UI: show original-language claim → translation →
+      verification chain explicitly for non-English submissions (Phase 3 backend work exists but
+      isn't visible to users today). Differentiator for African-language content that most
+      Western fact-checkers silently fail on.
+
+Suggested near-term order: Web Share Target + claim status notifications first (cheapest, reuse
+existing backend work, directly address retention); then batch/thread submission and surfacing
+the cross-lingual pipeline; source track-record pages once there's enough analysis volume for
+the aggregate stats to be meaningful.
+
+- [ ] Ambient in-page highlighting for the browser extension: underline/flag suspicious claims
+      directly in the page as the user scrolls (Grammarly-style), using existing claim
+      extraction, instead of a click-to-check badge. Passive detection drives daily habitual use
+      in a way a badge that has to be remembered and clicked does not. Supersedes/extends the
+      "real-time badge" line already under Phase 7's browser extension item.
+- [ ] Public "Trending misinformation" feed: no-login public page listing currently-circulating
+      claims already checked, ranked using the existing virality/spread-risk scorer. Turns
+      already-computed analysis data into an organic-growth surface (search landing page,
+      shareable link) instead of keeping every result locked behind a submission.
+
 ## Cross-Cutting / Ongoing
 
 - [ ] Test coverage for every service (unit + integration), not just endpoints
@@ -128,6 +183,34 @@ This phase alone is a usable, demoable product.
 - [ ] Circuit breakers & graceful degradation for third-party APIs (WHOIS, News API, Fact Check API)
 - [ ] Cost monitoring for LLM API usage (OpenRouter/Groq) — track per-analysis cost
 - [ ] Documentation kept in sync: `docs/architecture.md`, `docs/scoring-methodology.md`, `docs/api-reference.md`
+
+### Dashboard API & Frontend wiring (completed)
+
+- [x] `GET /api/v1/dashboard/summary` — user-scoped aggregate stats (analyses this week, avg accuracy, flagged sources, avg turnaround); returns `null` for values when insufficient data
+- [x] `GET /api/v1/sources` — paginated user-scoped source list ordered by reputation score
+- [x] `GET /api/v1/content` — paginated user-scoped content list for Recent analyses row
+- [x] `GET /api/v1/content/{id}/stream` — SSE endpoint for live analysis progress in AnalysisModal
+- [x] Frontend: `DashboardPage.tsx` fully wired to live endpoints with loading / error / empty states
+- [x] Frontend: sidebar uses React Router `<NavLink>` with `is-active` driven by actual route
+- [x] Frontend: inline submit-error banner replaces `alert(err.message)` on submission failure
+- [x] Frontend: `AnalysisModal` uses SSE stream with fallback polling for analysis progress
+- [x] Frontend: History, Sources, Settings pages functional and routed
+- [ ] Frontend: Claim graph page — interactive visualization (placeholder "Coming Soon")
+- [ ] Frontend: API keys page — token management (placeholder "Coming Soon")
+
+### Phase 4 Multi-Modal Ingestion (completed)
+
+- [x] `backend/app/services/ocr_service.py` — Screenshot OCR pipeline (Tesseract local + Google Vision fallback)
+- [x] `backend/app/services/media_preprocessor.py` — Image payload fetching/decoding (data URI, base64, URL)
+- [x] `backend/app/services/media_transcription.py` — Audio/video transcription placeholder (Groq Whisper plug-in point)
+- [x] `backend/app/services/pii_redactor.py` — Automatic PII redaction (email, phone, IP, address, name patterns)
+- [x] `backend/app/services/social_post_parser.py` — Social media post parsers (Twitter/X, Reddit, Facebook, Instagram, TikTok)
+- [x] `backend/app/services/c2pa_provenance.py` — C2PA provenance extraction placeholder
+- [x] `backend/app/services/vlm_alignment.py` — VLM image-caption alignment placeholder
+- [x] `backend/app/services/deepfake_screener.py` — Deepfake artifact screening placeholder
+- [x] `backend/app/services/image_reverse_search.py` — Image reverse search via Google Vision WEB_DETECTION
+- [x] `backend/app/workers/worker.py::_preprocess_modality` — Modality router dispatching image/screenshot/video/audio/social_post to pre-processors
+- [x] `backend/tests/test_phase4_multimodal.py` — 18 passing, 2 skipped (optional Pillow)
 
 ## Open Decisions (need resolving, not just building)
 

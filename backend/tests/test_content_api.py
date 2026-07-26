@@ -5,17 +5,38 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.main import app
 from app.models.analysis_result import AnalysisResult
 from app.models.content_item import ContentItem
+from app.models.user import User
+
+
+def make_mock_user():
+    return User(
+        id=uuid.uuid4(),
+        email="testuser@example.com",
+        hashed_password="dummy",
+        full_name="Test User",
+        is_active=True,
+        created_at=datetime.utcnow()
+    )
+
+
+async def mock_get_current_user(
+    token: str = pytest.approx(None), db: AsyncMock = None
+) -> User:
+    return make_mock_user()
 
 
 @pytest.mark.asyncio
 async def test_submit_content_and_get():
     fake_id = uuid.uuid4()
+    fake_user = make_mock_user()
     fake_item = ContentItem(
         id=fake_id,
+        user_id=fake_user.id,
         modality="text",
         content_hash="abc123hash",
         raw_payload="Engineers inspect newly constructed bridge after inaugural crossing.",
@@ -53,7 +74,11 @@ async def test_submit_content_and_get():
     async def override_get_db():
         yield mock_db
 
+    async def override_current_user():
+        return fake_user
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
 
     with patch("app.api.content.process_content_item", new_callable=AsyncMock) as mock_worker:
         mock_worker.return_value = True

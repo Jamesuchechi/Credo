@@ -5,6 +5,7 @@ import httpx
 
 from app.core.config import settings
 from app.schemas.claim import ExtractedClaimItem, ExtractedClaimsList
+from app.services.pii_redactor import redact_pii
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,8 @@ async def extract_claims_from_text(text: str) -> list[ExtractedClaimItem]:
     Uses OpenRouter/Groq LLM structured outputs with fallbacks.
     """
     clean_text = sanitize_prompt_injection(text)
+    # redact PII early to avoid leaking through LLMs or logs
+    clean_text = redact_pii(clean_text)
     if not clean_text.strip():
         return []
 

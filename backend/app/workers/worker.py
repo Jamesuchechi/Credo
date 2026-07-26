@@ -1,7 +1,10 @@
+import hashlib
+import json
 import logging
 import uuid
 
 from arq.connections import RedisSettings
+from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select
 
 from app.core.config import settings
@@ -26,16 +29,85 @@ from app.services.whois_service import extract_domain
 logger = logging.getLogger(__name__)
 
 
+def _progress_key(content_id: str) -> str:
+    return f"progress:{content_id}"
+
+
+async def set_progress(redis: AsyncRedis, content_id: str, phase: str, message: str) -> None:
+    await redis.set(
+        _progress_key(content_id),
+        json.dumps({"phase": phase, "message": message}),
+        ex=3600,
+    )
+
+
+async def _preprocess_modality(item: ContentItem, redis_client: AsyncRedis, content_id_str: str) -> tuple[str, str | None]:
+    """Route payload through the appropriate Phase 4 pre-processor.
+
+    Returns (extracted_text, domain).
+    """
+    modality = item.modality
+    raw = item.raw_payload
+
+    if modality == "url" or raw.startswith(("http://", "https://")):
+        url = item.url or raw.strip()
+        await set_progress(redis_client, content_id_str, "extracting", "Extracting article content and checking domain WHOIS")
+        extraction = await extract_article_content(url)
+        extracted_text = extraction["text"] if extraction["success"] else raw
+        if extraction["success"]:
+            item.title = extraction["title"]
+            item.extracted_text = extracted_text
+        domain = extract_domain(url)
+        return extracted_text, domain
+
+    if modality == "text":
+        await set_progress(redis_client, content_id_str, "preprocessing", "Preparing text for analysis")
+        return raw, None
+
+    if modality in ("image", "screenshot"):
+        await set_progress(redis_client, content_id_str, "ocr", "Extracting text from image via OCR")
+        from app.services.media_preprocessor import fetch_image_bytes
+        from app.services.ocr_service import extract_text_from_image
+        image_bytes = await fetch_image_bytes(raw)
+        extracted_text = ""
+        if image_bytes:
+            extracted_text = await extract_text_from_image(image_bytes)
+        item.extracted_text = extracted_text
+        return extracted_text or raw, None
+
+    if modality in ("video", "audio"):
+        await set_progress(redis_client, content_id_str, "transcribing", "Transcribing media content")
+        from app.services.media_transcription import transcribe_media
+        extracted_text = await transcribe_media(raw)
+        item.extracted_text = extracted_text
+        return extracted_text or raw, None
+
+    if modality == "social_post":
+        await set_progress(redis_client, content_id_str, "parsing", "Parsing social media post")
+        from app.services.social_post_parser import parse_social_post
+        parsed = parse_social_post(raw)
+        extracted_text = parsed.get("text", raw)
+        item.title = parsed.get("title")
+        item.extracted_text = extracted_text
+        return extracted_text, parsed.get("domain")
+
+    await set_progress(redis_client, content_id_str, "preprocessing", "Preparing content for analysis")
+    return raw, None
+
+
 async def process_content_item(ctx: dict, content_id_str: str) -> bool:
     """
-    ARQ Background Worker Task (Phase 3):
-    1. Extracts raw text / article body from URL or payload.
-    2. Runs Satire detection, Clickbait scoring & Manipulation tactics detection.
-    3. Runs LLM claim extraction & prompt injection defense.
-    4. Verifies each extracted claim independently.
-    5. Computes Phase 3 composite credibility score (v3.0.0-phase3) and saves DB records.
+    ARQ Background Worker Task (Phase 3 + Phase 4):
+    1. Routes payload through modality-specific pre-processor (OCR, transcription, social parser, etc.)
+    2. Redacts PII before external API calls and storage.
+    3. Runs Satire detection, Clickbait scoring & Manipulation tactics detection.
+    4. Runs LLM claim extraction & prompt injection defense.
+    5. Verifies each extracted claim independently.
+    6. Computes composite credibility score and saves DB records.
     """
-    logger.info(f"Worker starting Phase 3 processing for ContentItem: {content_id_str}")
+    logger.info(f"Worker starting processing for ContentItem: {content_id_str}")
+
+    redis_client = await AsyncRedis.from_url(settings.REDIS_URL)
 
     try:
         content_id = uuid.UUID(content_id_str)
@@ -56,18 +128,10 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
         await session.commit()
 
         try:
-            extracted_text = item.raw_payload
-            domain = None
+            extracted_text, domain = await _preprocess_modality(item, redis_client, content_id_str)
 
-            # Article Extraction & WHOIS Lookup if URL
-            if item.modality == "url" or item.raw_payload.startswith(("http://", "https://")):
-                url = item.url or item.raw_payload.strip()
-                extraction = await extract_article_content(url)
-                if extraction["success"]:
-                    extracted_text = extraction["text"]
-                    item.title = extraction["title"]
-                    item.extracted_text = extracted_text
-                domain = extract_domain(url)
+            from app.services.pii_redactor import redact_pii
+            extracted_text = redact_pii(extracted_text)
 
             # Source Reputation & WHOIS Age
             source = None
@@ -75,32 +139,40 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
                 source = await get_or_create_source(session, domain)
                 item.source_id = source.id
 
-            # Phase 3: Satire Detection Check
+            # Satire Detection Check
+            await set_progress(redis_client, content_id_str, "satire-check", "Running satire and source reputation analysis")
             satire_res = detect_satire(extracted_text, domain=domain)
 
-            # Phase 3: Clickbait & Virality Scoring
+            # Clickbait & Virality Scoring
+            await set_progress(redis_client, content_id_str, "linguistic", "Analyzing linguistic patterns and virality risk")
             clickbait_res = analyze_clickbait_and_sensationalism(extracted_text)
             virality_res = analyze_virality_risk(extracted_text)
 
-            # Phase 3: Manipulation Tactics Detection
+            # Manipulation Tactics Detection
+            await set_progress(redis_client, content_id_str, "manipulation", "Detecting manipulation tactics")
             manipulation_res = detect_manipulation_tactics(extracted_text)
 
-            # Phase 2: LLM Claim Extraction & Defense Shield
+            # LLM Claim Extraction & Defense Shield
+            await set_progress(redis_client, content_id_str, "claim-extraction", "Extracting factual claims from content")
             extracted_claims = await extract_claims_from_text(extracted_text)
 
             # Per-Claim Corroboration & Verification
+            await set_progress(redis_client, content_id_str, "claim-verification", f"Verifying {len(extracted_claims)} extracted claims")
             verified_claims = []
             for claim_item in extracted_claims:
                 claim_obj = await verify_and_create_claim(session, item.id, claim_item)
                 verified_claims.append(claim_obj)
 
             # Global Corroboration fallback
+            await set_progress(redis_client, content_id_str, "corroboration", "Cross-referencing against independent sources")
             global_references = await get_corroborating_sources(extracted_text[:120])
 
-            # Phase 3: Temporal Mismatch Check
+            # Temporal Mismatch Check
+            await set_progress(redis_client, content_id_str, "temporal", "Checking for temporal inconsistencies")
             temporal_res = detect_temporal_mismatch(extracted_text, global_references)
 
-            # Phase 3 Composite Scoring
+            # Composite Scoring
+            await set_progress(redis_client, content_id_str, "scoring", "Computing composite credibility score")
             score_data = compute_phase3_composite_score(
                 source=source,
                 claims=verified_claims,
@@ -128,14 +200,18 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
             item.status = "complete"
             await session.commit()
 
-            logger.info(f"ContentItem {content_id} Phase 3 analysis complete. Score: {score_data['composite_score']}")
+            await set_progress(redis_client, content_id_str, "complete", "Analysis complete")
+            logger.info(f"ContentItem {content_id} analysis complete. Score: {score_data['composite_score']}")
             return True
 
         except Exception as e:
             logger.error(f"Error processing ContentItem {content_id}: {e!s}", exc_info=True)
             item.status = "failed"
             await session.commit()
+            await set_progress(redis_client, content_id_str, "failed", f"Analysis failed: {e!s}")
             return False
+        finally:
+            await redis_client.close()
 
 
 async def startup(ctx: dict):
