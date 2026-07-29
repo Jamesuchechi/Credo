@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, AlertTriangle, ExternalLink, ShieldCheck, Loader2, History, Share2 } from 'lucide-react';
-import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard } from '../api/client';
+import { X, AlertTriangle, ExternalLink, ShieldCheck, Loader2, History, Share2, MessageSquare, Send } from 'lucide-react';
+import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard, submitClaimCorrection } from '../api/client';
 import { ContentAnalysisResponse } from '../types';
 import { ModelVersionChangelogModal } from './ModelVersionChangelogModal';
 
@@ -16,6 +16,40 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
   const [showChangelog, setShowChangelog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
+  const [activeClaimForEvidence, setActiveClaimForEvidence] = useState<{ id: string; claim_text: string } | null>(null);
+  const [proposedVerdict, setProposedVerdict] = useState<'supported' | 'contradicted' | 'unverified'>('contradicted');
+  const [evidenceText, setEvidenceText] = useState('');
+  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [isSubmittingEvidence, setIsSubmittingEvidence] = useState(false);
+  const [evidenceFeedback, setEvidenceFeedback] = useState<string | null>(null);
+
+  const handleEvidenceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeClaimForEvidence || !evidenceText.trim()) return;
+
+    setIsSubmittingEvidence(true);
+    setEvidenceFeedback(null);
+
+    try {
+      await submitClaimCorrection(activeClaimForEvidence.id, {
+        proposed_verdict: proposedVerdict,
+        evidence_text: evidenceText.trim(),
+        evidence_urls: evidenceUrl.trim() ? [evidenceUrl.trim()] : [],
+      });
+      setIsSubmittingEvidence(false);
+      setEvidenceFeedback('Community evidence submitted successfully! Submitted for expert review.');
+      setEvidenceText('');
+      setEvidenceUrl('');
+      setTimeout(() => {
+        setActiveClaimForEvidence(null);
+        setEvidenceFeedback(null);
+      }, 2500);
+    } catch (err: any) {
+      setIsSubmittingEvidence(false);
+      setEvidenceFeedback(err.message || 'Failed to submit community evidence');
+    }
+  };
+
   useEffect(() => {
     if (!contentId) return;
 
@@ -25,6 +59,21 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
 
     let isSubscribed = true;
     let pollingTimer: ReturnType<typeof setTimeout>;
+
+    // Immediately fetch existing analysis result for past history items
+    getContentAnalysis(contentId)
+      .then((data) => {
+        if (isSubscribed && data) {
+          setAnalysis(data);
+          if (data.status === 'complete') {
+            setPhase('complete');
+          } else if (data.status === 'failed') {
+            setError('Analysis failed');
+            setPhase('failed');
+          }
+        }
+      })
+      .catch(() => {});
 
     const cleanup = streamAnalysisProgress(
       contentId,
@@ -41,8 +90,11 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
       },
       (message: string) => {
         if (isSubscribed) {
-          setError(message);
-          setPhase('failed');
+          // If analysis was already loaded via REST API, ignore transient SSE close
+          if (!analysis) {
+            setError(message);
+            setPhase('failed');
+          }
         }
       }
     );
@@ -371,6 +423,22 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
                     </div>
                   )}
 
+                  {analysis.dimension_scores.virality_risk !== undefined && (
+                    <div className="demo-row">
+                      <span className="demo-row-label">Virality Risk</span>
+                      <div className="demo-bar">
+                        <div
+                          className="demo-bar-fill"
+                          style={{
+                            width: `${analysis.dimension_scores.virality_risk}%`,
+                            background: analysis.dimension_scores.virality_risk > 60 ? 'var(--disputed)' : 'var(--mislead)',
+                          }}
+                        ></div>
+                      </div>
+                      <span className="demo-row-val">{analysis.dimension_scores.virality_risk}%</span>
+                    </div>
+                  )}
+
                   <div className="demo-row">
                     <span className="demo-row-label">Temporal Match</span>
                     <div className="demo-bar">
@@ -498,6 +566,157 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
                         <p style={{ fontSize: '13px', color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
                           <strong style={{ color: 'var(--text)' }}>Evidence:</strong> {claim.evidence_summary}
                         </p>
+
+                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <button
+                            onClick={() => {
+                              setActiveClaimForEvidence(
+                                activeClaimForEvidence?.id === claim.id ? null : { id: claim.id, claim_text: claim.claim_text }
+                              );
+                              setEvidenceFeedback(null);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: '1px dashed var(--brass)',
+                              color: 'var(--brass)',
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontFamily: 'var(--mono)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <MessageSquare size={12} />
+                            Suggest Correction / Submit Evidence
+                          </button>
+                        </div>
+
+                        {activeClaimForEvidence?.id === claim.id && (
+                          <form
+                            onSubmit={handleEvidenceSubmit}
+                            style={{
+                              marginTop: '12px',
+                              padding: '14px',
+                              background: 'var(--surface-2)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--line-strong)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px',
+                            }}
+                          >
+                            <div style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--brass)' }}>
+                              Submit Community Evidence
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Proposed Verdict:</span>
+                              <select
+                                value={proposedVerdict}
+                                onChange={(e) => setProposedVerdict(e.target.value as any)}
+                                style={{
+                                  background: 'var(--surface)',
+                                  color: 'var(--text)',
+                                  border: '1px solid var(--line)',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontFamily: 'var(--mono)',
+                                }}
+                              >
+                                <option value="supported">Supported / True</option>
+                                <option value="contradicted">Contradicted / False</option>
+                                <option value="unverified">Unverified / Mixed</option>
+                              </select>
+                            </div>
+
+                            <textarea
+                              placeholder="Detail your evidence, source context, or reasoning..."
+                              value={evidenceText}
+                              onChange={(e) => setEvidenceText(e.target.value)}
+                              rows={2}
+                              style={{
+                                background: 'var(--surface)',
+                                border: '1px solid var(--line)',
+                                borderRadius: '6px',
+                                padding: '8px 12px',
+                                color: 'var(--text)',
+                                fontSize: '13px',
+                                outline: 'none',
+                              }}
+                              required
+                            />
+
+                            <input
+                              type="url"
+                              placeholder="Supporting Reference URL (e.g. https://...)"
+                              value={evidenceUrl}
+                              onChange={(e) => setEvidenceUrl(e.target.value)}
+                              style={{
+                                background: 'var(--surface)',
+                                border: '1px solid var(--line)',
+                                borderRadius: '6px',
+                                padding: '8px 12px',
+                                color: 'var(--text)',
+                                fontSize: '12.5px',
+                                outline: 'none',
+                              }}
+                            />
+
+                            {evidenceFeedback && (
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: evidenceFeedback.includes('successfully') ? 'var(--verified)' : 'var(--disputed)',
+                                  fontFamily: 'var(--mono)',
+                                }}
+                              >
+                                {evidenceFeedback}
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                onClick={() => setActiveClaimForEvidence(null)}
+                                style={{
+                                  background: 'transparent',
+                                  border: '1px solid var(--line)',
+                                  color: 'var(--text-dim)',
+                                  padding: '5px 12px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={isSubmittingEvidence || !evidenceText.trim()}
+                                style={{
+                                  background: 'var(--brass)',
+                                  border: 'none',
+                                  color: 'var(--ink)',
+                                  padding: '5px 14px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <Send size={12} />
+                                {isSubmittingEvidence ? 'Submitting...' : 'Submit Evidence'}
+                              </button>
+                            </div>
+                          </form>
+                        )}
                       </div>
                     );
                   })}

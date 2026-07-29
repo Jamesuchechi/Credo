@@ -65,20 +65,34 @@ async def _preprocess_modality(item: ContentItem, redis_client: AsyncRedis, cont
         return raw, None
 
     if modality in ("image", "screenshot"):
-        await set_progress(redis_client, content_id_str, "ocr", "Extracting text from image via OCR")
+        await set_progress(redis_client, content_id_str, "ocr", "Extracting text from image via OCR & analyzing provenance")
+        from app.services.c2pa_provenance import extract_c2pa_provenance
+        from app.services.deepfake_screener import screen_deepfake_artifacts
         from app.services.media_preprocessor import fetch_image_bytes
         from app.services.ocr_service import extract_text_from_image
+        from app.services.vlm_alignment import check_vlm_alignment
+
         image_bytes = await fetch_image_bytes(raw)
         extracted_text = ""
         if image_bytes:
             extracted_text = await extract_text_from_image(image_bytes)
+            c2pa_info = extract_c2pa_provenance(media_bytes=image_bytes)
+            vlm_info = check_vlm_alignment(image_bytes=image_bytes, caption=extracted_text)
+            deepfake_info = screen_deepfake_artifacts(media_bytes=image_bytes)
+            logger.info(f"Phase 4 media checks complete: C2PA={c2pa_info['has_c2pa_manifest']}, VLM={vlm_info['is_mismatched']}, Deepfake={deepfake_info['is_suspicious']}")
+
         item.extracted_text = extracted_text
         return extracted_text or raw, None
 
     if modality in ("video", "audio"):
-        await set_progress(redis_client, content_id_str, "transcribing", "Transcribing media content")
+        await set_progress(redis_client, content_id_str, "transcribing", "Transcribing media content & screening deepfakes")
+        from app.services.deepfake_screener import screen_deepfake_artifacts
         from app.services.media_transcription import transcribe_media
+
         extracted_text = await transcribe_media(raw)
+        deepfake_info = screen_deepfake_artifacts(media_path=raw)
+        logger.info(f"Phase 4 audio/video checks complete: Deepfake={deepfake_info['is_suspicious']}")
+
         item.extracted_text = extracted_text
         return extracted_text or raw, None
 
@@ -214,8 +228,12 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
             await redis_client.close()
 
 
+from app.db.init_db import init_db
+
+
 async def startup(ctx: dict):
     logger.info("ARQ Worker starting up...")
+    await init_db()
 
 
 async def shutdown(ctx: dict):

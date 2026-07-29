@@ -11,17 +11,24 @@ import { TransparencySection } from './components/TransparencySection';
 import { WaitlistSection } from './components/WaitlistSection';
 import { Footer } from './components/Footer';
 import { AnalysisModal } from './components/AnalysisModal';
+import { DashboardLayout } from './components/DashboardLayout';
 
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { AnalyzePage } from './pages/AnalyzePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SourcesPage } from './pages/SourcesPage';
+import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ClaimGraphPage } from './pages/ClaimGraphPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
+import { TrendingFeedPage } from './pages/TrendingFeedPage';
+import { PublisherWidgetsPage } from './pages/PublisherWidgetsPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { fetchHealth } from './api/client';
 import { HealthResponse } from './types';
 
@@ -146,54 +153,27 @@ export const App: React.FC = () => {
                 </PublicOnlyRoute>
               }
             />
+            {/* Protected layout: sidebar is shared across all dashboard pages */}
             <Route
-              path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <DashboardLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="/dashboard/history"
-              element={
-                <ProtectedRoute>
-                  <HistoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/sources"
-              element={
-                <ProtectedRoute>
-                  <SourcesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/claim-graph"
-              element={
-                <ProtectedRoute>
-                  <ClaimGraphPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/api-keys"
-              element={
-                <ProtectedRoute>
-                  <ApiKeysPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/dashboard/analyze" element={<AnalyzePage />} />
+              <Route path="/dashboard/history" element={<HistoryPage />} />
+              <Route path="/dashboard/trending" element={<TrendingFeedPage />} />
+              <Route path="/dashboard/sources" element={<SourcesPage />} />
+              <Route path="/dashboard/review-queue" element={<ReviewQueuePage />} />
+              <Route path="/dashboard/claim-graph" element={<ClaimGraphPage />} />
+              <Route path="/dashboard/api-keys" element={<ApiKeysPage />} />
+              <Route path="/dashboard/publisher-widgets" element={<PublisherWidgetsPage />} />
+              <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
+              <Route path="/dashboard/profile" element={<ProfilePage />} />
+              <Route path="/dashboard/settings" element={<SettingsPage />} />
+            </Route>
             {/* Fallback to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

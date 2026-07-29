@@ -28,6 +28,8 @@ from app.schemas.content import (
     ContentListResponse,
     ContentSubmissionRequest,
     CredibilityCardResponse,
+    ModelVersionChangelogResponse,
+    ModelVersionEntry,
     SubmissionResponse,
 )
 from app.schemas.source import SourceResponse
@@ -250,9 +252,11 @@ async def list_content(
         result_res = await db.execute(result_stmt)
         analysis = result_res.scalar_one_or_none()
 
-        claims_count = 0
-        if item.claims:
-            claims_count = len(item.claims)
+        claims_count_stmt = select(func.count(Claim.id)).where(
+            Claim.content_item_id == item.id
+        )
+        claims_count_res = await db.execute(claims_count_stmt)
+        claims_count = claims_count_res.scalar_one()
 
         verdict = None
         if analysis and analysis.composite_score is not None:
@@ -272,6 +276,7 @@ async def list_content(
             ContentItemSummary(
                 id=item.id,
                 title=item.title,
+                raw_payload=item.raw_payload,
                 source_domain=source_domain,
                 status=item.status,
                 verdict=verdict,
@@ -357,7 +362,7 @@ async def stream_analysis_progress(
                     created_at=item.created_at,
                 )
                 yield f"data: {result_data.model_dump(mode='json')}\n\n"
-            return
+                return
 
             yield f"data: {json.dumps({'phase': 'queued', 'message': 'Analysis queued'})}\n\n"
 
@@ -438,6 +443,53 @@ async def stream_analysis_progress(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/model-versions/changelog", response_model=ModelVersionChangelogResponse)
+async def get_model_version_changelog():
+    """
+    Returns history of scoring model versions and feature updates.
+    """
+    return ModelVersionChangelogResponse(
+        current_version="v3.0.0-phase3",
+        entries=[
+            ModelVersionEntry(
+                version="v3.0.0-phase3",
+                date="2026-07-29",
+                title="Phase 3: Stylometrics, Manipulation Tactics & Virality Risk",
+                changes=[
+                    "Integrated in-house stylometric clickbait and sensationalism classifier.",
+                    "Added rhetorical manipulation tactics detector (appeal to fear, false dichotomy, cherry picking).",
+                    "Surfaced satire and parody classification to suppress false misinfo flags.",
+                    "Added temporal mismatch detector cross-referencing claim dates with source timestamps.",
+                    "Added virality spread risk scoring based on structural & emotional features."
+                ]
+            ),
+            ModelVersionEntry(
+                version="v2.0.0-phase2",
+                date="2026-07-25",
+                title="Phase 2: Claim-Level Extraction & Multi-Source Corroboration",
+                changes=[
+                    "Integrated OpenRouter LLM claim extraction with Pydantic JSON Schema guards.",
+                    "Implemented per-claim independent corroboration routing.",
+                    "Added claim verification status logic (supported / contradicted / unverified) with confidence intervals.",
+                    "Introduced TTL and decay tracking on claim verification records."
+                ]
+            ),
+            ModelVersionEntry(
+                version="v1.0.0-phase1",
+                date="2026-07-20",
+                title="Phase 1: Source Reputation & Baseline Corroboration MVP",
+                changes=[
+                    "Seeded domain source reputation database from public datasets.",
+                    "Integrated WHOIS domain age lookup service.",
+                    "Added Google Fact Check Tools API and News API corroboration aggregators.",
+                    "Added Redis semantic caching for URL deduplication."
+                ]
+            )
+        ]
+    )
+
 
 
 @router.get("/content/{content_id}/card", response_model=CredibilityCardResponse)

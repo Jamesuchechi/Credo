@@ -95,11 +95,11 @@ This phase alone is a usable, demoable product.
 
 ## Phase 6 — Community Layer
 
-- [ ] `contributors` table + reputation weighting logic
-- [ ] Crowdsourced claim verification UI (submit corrections/evidence on a claim)
-- [ ] Contributor reputation scoring algorithm
-- [ ] Expert/journalist review queue (manual review of disputed items)
-- [ ] Feedback loop: verified community corrections feed back into model training/weight tuning
+- [x] `contributors` table + reputation weighting logic (`backend/app/models/contributor.py`, `backend/app/models/claim_correction.py`)
+- [x] Crowdsourced claim verification UI (submit corrections/evidence on a claim in `AnalysisModal.tsx`)
+- [x] Contributor reputation scoring algorithm (`backend/app/services/community_service.py::calculate_contributor_weight`)
+- [x] Expert/journalist review queue (manual review of disputed items at `/dashboard/review-queue` & `ReviewQueuePage.tsx`)
+- [x] Feedback loop: verified community corrections feed back into model training/weight tuning (`backend/app/services/community_service.py::recalculate_claim_verdict_and_composite_score`)
 
 ## Phase 7 — Product Surfaces
 
@@ -112,19 +112,19 @@ This phase alone is a usable, demoable product.
 - [x] History page (`/dashboard/history`) — paginated list of all user analyses
 - [x] Sources page (`/dashboard/sources`) — paginated source reputation table
 - [x] Settings page (`/dashboard/settings`) — profile display + session management
-- [ ] Claim graph page (`/dashboard/claim-graph`) — interactive visualization (placeholder "Coming Soon")
-- [ ] API key management page (`/dashboard/api-keys`) — generate/revoke/monitor tokens (placeholder "Coming Soon")
-- [ ] Publisher/newsroom dashboard with embeddable trust badge & JS widget
+- [x] Claim graph page (`/dashboard/claim-graph`) — interactive SVG node propagation network visualization
+- [x] API key management page (`/dashboard/api-keys`) — generate/revoke/monitor token quotas
+- [x] Publisher/newsroom dashboard with embeddable trust badge & JS widget (`/dashboard/publisher-widgets`)
 - [ ] Personal "credibility diet" weekly digest feature
 
 ## Phase 8 — Platform / Monetization Layer
 
-- [ ] Public API key management + usage-based rate limiting
+- [x] Public API key management + usage-based rate limiting
 - [ ] Tiered API Token Quota & credit management
 - [ ] SDK/client libraries (start with JS/TS, then Python)
 - [ ] Enterprise API documentation + onboarding flow
 - [ ] Billing integration (consider Paystack given African market context)
-- [ ] Usage analytics dashboard for API customers
+- [x] Usage analytics dashboard for API customers (`/dashboard/analytics`)
 
 ## Phase 9 — Reliability, Evals & MLOps
 
@@ -168,7 +168,7 @@ the aggregate stats to be meaningful.
       extraction, instead of a click-to-check badge. Passive detection drives daily habitual use
       in a way a badge that has to be remembered and clicked does not. Supersedes/extends the
       "real-time badge" line already under Phase 7's browser extension item.
-- [ ] Public "Trending misinformation" feed: no-login public page listing currently-circulating
+- [x] Public "Trending misinformation" feed (`/dashboard/trending`): page listing currently-circulating
       claims already checked, ranked using the existing virality/spread-risk scorer. Turns
       already-computed analysis data into an organic-growth surface (search landing page,
       shareable link) instead of keeping every result locked behind a submission.

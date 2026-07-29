@@ -51,6 +51,7 @@ class ContentAnalysisResponse(BaseModel):
 class ContentItemSummary(BaseModel):
     id: uuid.UUID
     title: str | None
+    raw_payload: str | None = None
     source_domain: str | None
     status: str
     verdict: str | None
@@ -64,3 +65,16 @@ class ContentListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ModelVersionEntry(BaseModel):
+    version: str
+    date: str
+    title: str
+    changes: list[str]
+
+
+class ModelVersionChangelogResponse(BaseModel):
+    current_version: str
+    entries: list[ModelVersionEntry]
+

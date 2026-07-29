@@ -17,6 +17,7 @@ export interface DimensionScores {
   source_reputation: number;
   manipulation_tactics: number;
   clickbait_risk?: number;
+  virality_risk?: number;
   bias: string;
   temporal_consistency: number;
   is_satire?: boolean;
@@ -104,15 +105,16 @@ export interface SourceResponse {
  }
  
  export interface ContentItemSummary {
-   id: string;
-   title: string | null;
-   source_domain: string | null;
-   status: string;
-   verdict: string | null;
-   claims_count: number;
-   composite_score: number | null;
-   created_at: string;
- }
+  id: string;
+  title: string | null;
+  raw_payload?: string | null;
+  source_domain: string | null;
+  status: string;
+  verdict: string | null;
+  claims_count: number;
+  composite_score: number | null;
+  created_at: string;
+}
  
  export interface ContentListResponse {
    items: ContentItemSummary[];
@@ -195,4 +197,72 @@ export interface CredibilityCardResponse {
   model_version: string | null;
   created_at: string;
   source_domain: string | null;
+}
+
+export interface CorrectionSubmissionRequest {
+  proposed_verdict: 'supported' | 'contradicted' | 'unverified';
+  evidence_text: string;
+  evidence_urls?: string[];
+}
+
+export interface ClaimCorrectionResponse {
+  id: string;
+  claim_id: string;
+  contributor_id: string;
+  proposed_verdict: 'supported' | 'contradicted' | 'unverified';
+  evidence_text: string;
+  evidence_urls: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  reviewer_id?: string;
+  review_notes?: string;
+  created_at: string;
+  reviewed_at?: string;
+  contributor_name?: string;
+  contributor_role?: string;
+}
+
+export interface ReviewQueueItem {
+  correction_id: string;
+  claim_id: string;
+  claim_text: string;
+  original_verdict: string;
+  proposed_verdict: string;
+  evidence_text: string;
+  evidence_urls: string[];
+  submitted_at: string;
+  contributor_name: string;
+  contributor_role: string;
+  contributor_reputation: number;
+}
+
+export interface ReviewQueueListResponse {
+  items: ReviewQueueItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ContributorResponse {
+  id: string;
+  user_id: string;
+  role: string;
+  reputation_score: number;
+  verified_submissions_count: number;
+  accuracy_rate: number;
+  full_name?: string;
+}
+
+export interface LeaderboardResponse {
+  items: ContributorResponse[];
+}
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  is_active: boolean;
+  created_at: string;
+  last_used_at?: string | null;
+  secret_key?: string | null;
 }

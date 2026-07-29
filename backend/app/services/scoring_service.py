@@ -69,7 +69,7 @@ def compute_phase3_composite_score(
         tactics_list = [t["label"] for t in manipulation_data.get("detected_tactics", [])]
         tactics_str = ", ".join(tactics_list) if tactics_list else "None"
         summary_note = (
-            f"Phase 3 Analysis Complete: {len(claims)} claim(s) checked. "
+            f"Credibility Analysis Complete: {len(claims)} claim(s) verified. "
             f"Clickbait Risk: {clickbait_risk}%. Manipulation Tactics: {tactics_str}. "
             f"Independent Bias Axis: {source.bias_rating if source else 'center'}."
         )
@@ -107,6 +107,7 @@ def compute_phase3_composite_score(
             "source_reputation": round(source_score, 1),
             "manipulation_tactics": round(manipulation_data.get("manipulation_score", 0.0), 1),
             "clickbait_risk": round(clickbait_risk, 1),
+            "virality_risk": round(virality_data.get("virality_score", 0.0), 1),
             "temporal_consistency": round(temporal_score, 1),
             "bias": source.bias_rating if source else "center",
             "is_satire": is_satire

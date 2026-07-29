@@ -9,6 +9,11 @@ import {
   SourcesListResponse,
   ModelVersionChangelogResponse,
   CredibilityCardResponse,
+  CorrectionSubmissionRequest,
+  ClaimCorrectionResponse,
+  ReviewQueueListResponse,
+  LeaderboardResponse,
+  ApiKeyItem,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -148,6 +153,101 @@ export async function fetchCredibilityCard(contentId: string): Promise<Credibili
   });
   if (!response.ok) {
     throw new Error(`Credibility card fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function submitClaimCorrection(
+  claimId: string,
+  data: CorrectionSubmissionRequest
+): Promise<ClaimCorrectionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/claims/${claimId}/corrections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error(`Correction submission failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchClaimCorrections(claimId: string): Promise<ClaimCorrectionResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/claims/${claimId}/corrections`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Claim corrections fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchReviewQueue(page: number = 1, pageSize: number = 20): Promise<ReviewQueueListResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/community/review-queue?page=${page}&page_size=${pageSize}`,
+    { headers: getAuthHeaders() }
+  );
+  if (!response.ok) {
+    throw new Error(`Review queue fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function reviewCorrection(
+  correctionId: string,
+  decision: 'approved' | 'rejected',
+  reviewNotes?: string
+): Promise<ClaimCorrectionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/community/corrections/${correctionId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ decision, review_notes: reviewNotes }),
+  });
+  if (!response.ok) {
+    throw new Error(`Review decision submission failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchLeaderboard(): Promise<LeaderboardResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/community/leaderboard`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Leaderboard fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchApiKeys(): Promise<ApiKeyItem[]> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/api-keys`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`API keys fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function createApiKey(name: string, scopes: string[] = ['read_only']): Promise<ApiKeyItem> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/api-keys`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name, scopes }),
+  });
+  if (!response.ok) {
+    throw new Error(`API key generation failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function revokeApiKey(keyId: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/api-keys/${keyId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`API key revocation failed with status ${response.status}`);
   }
   return response.json();
 }

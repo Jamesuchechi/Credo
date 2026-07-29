@@ -146,14 +146,18 @@ async def dashboard_summary(
     flagged_res = await db.execute(flagged_stmt)
     sources_flagged_count = flagged_res.scalar_one()
 
-    turnaround_stmt = (
-        select(
-            func.avg(
-                func.extract(
-                    "epoch", func.age(AnalysisResult.created_at, ContentItem.created_at)
-                )
-            )
+    bind = db.bind
+    if bind and bind.dialect.name == "sqlite":
+        turnaround_expr = (
+            func.julianday(AnalysisResult.created_at) - func.julianday(ContentItem.created_at)
+        ) * 86400.0
+    else:
+        turnaround_expr = func.extract(
+            "epoch", func.age(AnalysisResult.created_at, ContentItem.created_at)
         )
+
+    turnaround_stmt = (
+        select(func.avg(turnaround_expr))
         .join(ContentItem, ContentItem.id == AnalysisResult.content_item_id)
         .where(
             ContentItem.user_id == current_user.id,

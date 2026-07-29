@@ -131,13 +131,16 @@ class TestMediaPreprocessor:
 
 @pytest.mark.skipif(not HAS_OCR, reason="Pillow not installed")
 class TestOcrService:
-    def test_extract_text_from_image_returns_string(self):
-        result = extract_text_from_image(b"")
+    @pytest.mark.asyncio
+    async def test_extract_text_from_image_returns_string(self):
+        result = await extract_text_from_image(b"")
         assert isinstance(result, str)
 
-    def test_extract_text_from_image_empty_bytes(self):
-        result = extract_text_from_image(b"")
+    @pytest.mark.asyncio
+    async def test_extract_text_from_image_empty_bytes(self):
+        result = await extract_text_from_image(b"")
         assert result == ""
+
 
 
 @pytest.mark.skipif(not HAS_REVERSE_SEARCH, reason="reverse_image_search not available")
