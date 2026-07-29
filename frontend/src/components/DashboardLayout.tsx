@@ -4,8 +4,7 @@ import { Sidebar } from './Sidebar';
 
 /**
  * DashboardLayout wraps all protected dashboard routes.
- * It renders the persistent Sidebar on the left and the
- * page content (via <Outlet />) on the right.
+ * Renders the persistent Sidebar on the left and the page content via <Outlet /> on the right.
  */
 export const DashboardLayout: React.FC = () => {
   return (
@@ -19,7 +18,8 @@ export const DashboardLayout: React.FC = () => {
         .dash-app {
           display: grid;
           grid-template-columns: 240px 1fr;
-          min-height: 100vh;
+          height: 100vh;
+          overflow: hidden;
           background: var(--ink);
           color: var(--text);
         }
@@ -31,9 +31,19 @@ export const DashboardLayout: React.FC = () => {
           display: flex;
           flex-direction: column;
           padding: 22px 16px;
-          position: sticky;
-          top: 0;
           height: 100vh;
+          overflow-y: auto;
+          box-sizing: border-box;
+          scrollbar-width: thin;
+          scrollbar-color: var(--line) transparent;
+        }
+
+        .sidebar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+          background: var(--line);
+          border-radius: 4px;
         }
 
         .side-brand {
@@ -43,7 +53,8 @@ export const DashboardLayout: React.FC = () => {
           font-family: var(--serif);
           font-size: 18px;
           font-weight: 600;
-          padding: 6px 10px 26px;
+          padding: 6px 10px 20px;
+          flex-shrink: 0;
         }
 
         .side-nav {
@@ -79,6 +90,7 @@ export const DashboardLayout: React.FC = () => {
 
         .side-spacer {
           flex: 1;
+          min-height: 16px;
         }
 
         .side-user {
@@ -89,6 +101,8 @@ export const DashboardLayout: React.FC = () => {
           border-radius: 10px;
           border: 1px solid var(--line);
           margin-top: 8px;
+          flex-shrink: 0;
+          background: var(--surface);
         }
 
         .side-avatar {
@@ -122,15 +136,20 @@ export const DashboardLayout: React.FC = () => {
           text-overflow: ellipsis;
         }
 
-        /* ── Main area ───────────────────────────── */
+        /* ── Main Area (Scrollable viewport) ───────────────────────────── */
         .main {
+          height: 100vh;
+          overflow-y: auto;
           min-width: 0;
+          scrollbar-width: thin;
+          scrollbar-color: var(--line) transparent;
         }
 
         /* ── Responsive ──────────────────────────── */
         @media (max-width: 800px) {
-          .dash-app { grid-template-columns: 1fr; }
+          .dash-app { grid-template-columns: 1fr; height: auto; overflow: auto; }
           .sidebar  { display: none; }
+          .main     { height: auto; overflow: visible; }
         }
       `}</style>
     </div>

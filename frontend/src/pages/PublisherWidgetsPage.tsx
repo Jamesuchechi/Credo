@@ -33,7 +33,7 @@ export const PublisherWidgetsPage: React.FC = () => {
       <header style={{ marginBottom: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/dashboard')}
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--line)',

@@ -251,3 +251,18 @@ export async function revokeApiKey(keyId: string): Promise<{ message: string }> 
   }
   return response.json();
 }
+
+export async function fetchTrendingNews(category: string = 'all', query?: string): Promise<any> {
+  const params = new URLSearchParams();
+  if (category && category !== 'all') params.append('category', category);
+  if (query) params.append('q', query);
+
+  const url = `${API_BASE_URL}/api/v1/news/trending?${params.toString()}`;
+  const response = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`News fetch failed with status ${response.status}`);
+  }
+  return response.json();
+}

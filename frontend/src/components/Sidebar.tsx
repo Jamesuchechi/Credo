@@ -11,7 +11,7 @@ import {
   User,
   Settings,
   LogOut,
-  Flame,
+  Newspaper,
   Code,
   BarChart2,
 } from 'lucide-react';
@@ -40,7 +40,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="sidebar">
-      <div className="side-brand">
+      <NavLink to="/dashboard" className="side-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
         <div
           style={{
             width: '28px',
@@ -55,7 +55,7 @@ export const Sidebar: React.FC = () => {
           <ShieldCheck size={16} color="var(--brass)" />
         </div>
         Credo
-      </div>
+      </NavLink>
 
       <nav className="side-nav">
         {/* SECTION 1: MAIN */}
@@ -70,7 +70,7 @@ export const Sidebar: React.FC = () => {
           <HistoryIcon size={16} /> History
         </NavLink>
         <NavLink to="/dashboard/trending" className={navLink}>
-          <Flame size={16} /> Trending Feed
+          <Newspaper size={16} /> Live News Wire
         </NavLink>
 
         {/* SECTION 2: INTELLIGENCE & COMMUNITY */}

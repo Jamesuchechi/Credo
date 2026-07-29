@@ -173,8 +173,9 @@ export const App: React.FC = () => {
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/dashboard/profile" element={<ProfilePage />} />
               <Route path="/dashboard/settings" element={<SettingsPage />} />
+              <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
             </Route>
-            {/* Fallback to home */}
+            {/* Fallback to home for unknown non-dashboard routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
