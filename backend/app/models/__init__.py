@@ -7,5 +7,19 @@ from app.models.content_item import ContentItem
 from app.models.contributor import Contributor
 from app.models.source import Source
 from app.models.user import User
+from app.models.webhook import WebhookDelivery, WebhookEndpoint
 
-__all__ = ["AnalysisResult", "ApiKey", "Base", "Claim", "ClaimCorrection", "ContentItem", "Contributor", "Source", "User"]
+__all__ = [
+    "AnalysisResult",
+    "ApiKey",
+    "Base",
+    "Claim",
+    "ClaimCorrection",
+    "ContentItem",
+    "Contributor",
+    "Source",
+    "User",
+    "WebhookDelivery",
+    "WebhookEndpoint",
+]
+

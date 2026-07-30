@@ -504,6 +504,24 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ contentId, onClose
               </div>
             )}
 
+            {/* Cross-Lingual NLP Pipeline Card */}
+            <div style={{ marginBottom: '28px', background: 'var(--surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+              <h4 style={{ fontFamily: 'var(--serif)', fontSize: '18px', fontWeight: 500, marginBottom: '8px', color: 'var(--brass)' }}>
+                🌐 Cross-Lingual Verification Pipeline
+              </h4>
+              <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: '12px' }}>
+                Credo automatically detects local dialects and non-English submissions, performing semantic translation prior to cross-referencing global fact databases.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--text-muted)' }}>
+                <span style={{ padding: '2px 8px', background: 'var(--surface-2)', borderRadius: '4px' }}>Original Input</span>
+                <span>→</span>
+                <span style={{ padding: '2px 8px', background: 'var(--surface-2)', borderRadius: '4px' }}>English Translation</span>
+                <span>→</span>
+                <span style={{ padding: '2px 8px', background: 'var(--verified-dim)', color: 'var(--verified)', borderRadius: '4px' }}>Claim Verification</span>
+              </div>
+            </div>
+
+
             {/* Phase 2: Granular Per-Claim Breakdown Cards */}
             {analysis.claims && analysis.claims.length > 0 && (
               <div style={{ marginBottom: '28px' }}>

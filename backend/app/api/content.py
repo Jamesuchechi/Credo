@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+
 from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import func, select
@@ -546,3 +548,30 @@ async def get_credibility_card(
         created_at=item.created_at,
         source_domain=source_domain,
     )
+
+
+class BatchSubmissionRequest(BaseModel):
+    items: list[ContentSubmissionRequest]
+
+
+@router.post("/content/batch", status_code=status.HTTP_202_ACCEPTED)
+async def submit_content_batch(
+    request: BatchSubmissionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Submits a batch of content items (chat thread / forwarded message chain)
+    for per-message credibility verification.
+    """
+    queued_ids = []
+    for item_req in request.items:
+        sub_res = await submit_content(item_req, current_user=current_user, db=db)
+        queued_ids.append(sub_res.content_id)
+
+    return {
+        "status": "queued",
+        "total_items": len(queued_ids),
+        "content_ids": queued_ids,
+        "message": f"Successfully queued {len(queued_ids)} items for thread credibility analysis."
+    }

@@ -30,7 +30,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_security_headers_and_rate_limit(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-RateLimit-Limit"] = "100"
+    return response
+
+
 app.include_router(api_router)
+
 
 
 @app.get("/health", tags=["Health"])

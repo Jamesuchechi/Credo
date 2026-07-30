@@ -103,10 +103,10 @@ This phase alone is a usable, demoable product.
 
 ## Phase 7 — Product Surfaces
 
-- [ ] Browser extension (real-time badge while browsing) — separate `extension/` package
-- [ ] WhatsApp bot (forward a message, get a credibility card back) — separate `bot/` service; research WhatsApp Business API access requirements
-- [ ] Telegram bot (lower integration friction than WhatsApp — consider building first)
-- [ ] Webhook notification system (`POST /webhooks/analysis-complete`) for enterprise clients & bot callbacks
+- [x] Browser extension (real-time badge while browsing) — separate `extension/` package
+- [x] WhatsApp bot (forward a message, get a credibility card back) — separate `bot/` service; research WhatsApp Business API access requirements
+- [x] Telegram bot (lower integration friction than WhatsApp — consider building first)
+- [x] Webhook notification system (`POST /webhooks/analysis-complete`) for enterprise clients & bot callbacks
 - [x] Authenticated dashboard shell (`/dashboard`) with sidebar navigation
 - [x] Dashboard overview page — stat row + recent analyses + sources to watch (all live data)
 - [x] History page (`/dashboard/history`) — paginated list of all user analyses
@@ -115,7 +115,7 @@ This phase alone is a usable, demoable product.
 - [x] Claim graph page (`/dashboard/claim-graph`) — interactive SVG node propagation network visualization
 - [x] API key management page (`/dashboard/api-keys`) — generate/revoke/monitor token quotas
 - [x] Publisher/newsroom dashboard with embeddable trust badge & JS widget (`/dashboard/publisher-widgets`)
-- [ ] Personal "credibility diet" weekly digest feature
+- [x] Personal "credibility diet" weekly digest feature
 
 ## Phase 8 — Platform / Monetization Layer
 
@@ -128,11 +128,11 @@ This phase alone is a usable, demoable product.
 
 ## Phase 9 — Reliability, Evals & MLOps
 
-- [ ] Golden Evaluation Dataset: Curate an annotated benchmark set of 200+ multi-modal items (true, false, satire, temporal mismatch, false dichotomy).
-- [ ] Automated CI Eval Harness: CI pipeline integration measuring Precision, Recall, and F1-score for claim extraction and scoring updates.
-- [ ] LLM Token Cost & Latency Dashboard: Real-time tracking of token counts, cost-per-analysis, and latency breakdown per provider (Groq vs. OpenRouter).
-- [ ] Circuit Breakers & Dead-Letter Queue (DLQ) for worker task resilience against third-party API downtime.
-- [ ] Privacy & Data Retention Pipeline: Automated purging/anonymization of user-submitted content in compliance with NDPR/GDPR.
+- [x] Golden Evaluation Dataset: Curate an annotated benchmark set of 200+ multi-modal items (true, false, satire, temporal mismatch, false dichotomy).
+- [x] Automated CI Eval Harness: CI pipeline integration measuring Precision, Recall, and F1-score for claim extraction and scoring updates.
+- [x] LLM Token Cost & Latency Dashboard: Real-time tracking of token counts, cost-per-analysis, and latency breakdown per provider (Groq vs. OpenRouter).
+- [x] Circuit Breakers & Dead-Letter Queue (DLQ) for worker task resilience against third-party API downtime.
+- [x] Privacy & Data Retention Pipeline: Automated purging/anonymization of user-submitted content in compliance with NDPR/GDPR.
 
 ## Phase 10 — Growth & Retention Features (adoption-focused, not yet scoped elsewhere)
 
@@ -140,20 +140,20 @@ These target the actual friction/retention gaps in how misinformation spreads an
 would realistically use Credo day-to-day — distinct from raw pipeline capability or platform
 plumbing already covered above.
 
-- [ ] PWA + Web Share Target API support: let users share a link/screenshot/forwarded message
+- [x] PWA + Web Share Target API support: let users share a link/screenshot/forwarded message
       directly from their OS share sheet (WhatsApp, Twitter, etc.) into Credo, instead of
       copy-pasting into the site. Ships well before WhatsApp Business API approval and removes
       the main friction point standing between "saw something suspicious" and "checked it."
-- [ ] Claim status change notifications: opt-in notification when a previously-checked claim's
+- [x] Claim status change notifications: opt-in notification when a previously-checked claim's
       verification status changes (leverages existing TTL/decay tracking from Phase 2). Turns
       one-shot lookups into a reason to come back to the product.
-- [ ] Batch/thread submission: accept a full forwarded chain or thread (not just a single
+- [x] Batch/thread submission: accept a full forwarded chain or thread (not just a single
       URL/text block) and return a per-message breakdown in one submission — matches how
       misinformation actually circulates (chains, not single clean links).
-- [ ] Public source track-record pages: surface accumulated source reputation over time
+- [x] Public source track-record pages: surface accumulated source reputation over time
       ("this outlet has published N checked items; X% held up") rather than only showing a
       score per individual analysis. Compounding public data, more shareable than a one-off score.
-- [ ] Surface the cross-lingual pipeline in the UI: show original-language claim → translation →
+- [x] Surface the cross-lingual pipeline in the UI: show original-language claim → translation →
       verification chain explicitly for non-English submissions (Phase 3 backend work exists but
       isn't visible to users today). Differentiator for African-language content that most
       Western fact-checkers silently fail on.
@@ -163,7 +163,7 @@ existing backend work, directly address retention); then batch/thread submission
 the cross-lingual pipeline; source track-record pages once there's enough analysis volume for
 the aggregate stats to be meaningful.
 
-- [ ] Ambient in-page highlighting for the browser extension: underline/flag suspicious claims
+- [x] Ambient in-page highlighting for the browser extension: underline/flag suspicious claims
       directly in the page as the user scrolls (Grammarly-style), using existing claim
       extraction, instead of a click-to-check badge. Passive detection drives daily habitual use
       in a way a badge that has to be remembered and clicked does not. Supersedes/extends the
@@ -175,48 +175,13 @@ the aggregate stats to be meaningful.
 
 ## Cross-Cutting / Ongoing
 
-- [ ] Test coverage for every service (unit + integration), not just endpoints
-- [ ] Rate limiting + abuse prevention on public-facing submission endpoints
-- [ ] Caching strategy review (dedupe identical URL/content submissions via hash before reprocessing)
-- [ ] Observability: structured logging, error tracking (e.g., Sentry), basic metrics/dashboards
-- [ ] Security review: input sanitization on all ingestion paths, especially image/video uploads
-- [ ] Circuit breakers & graceful degradation for third-party APIs (WHOIS, News API, Fact Check API)
-- [ ] Cost monitoring for LLM API usage (OpenRouter/Groq) — track per-analysis cost
-- [ ] Documentation kept in sync: `docs/architecture.md`, `docs/scoring-methodology.md`, `docs/api-reference.md`
+- [x] Test coverage for every service (unit + integration), not just endpoints
+- [x] Rate limiting + abuse prevention on public-facing submission endpoints
+- [x] Caching strategy review (dedupe identical URL/content submissions via hash before reprocessing)
+- [x] Observability: structured logging, error tracking (e.g., Sentry), basic metrics/dashboards
+- [x] Security review: input sanitization on all ingestion paths, especially image/video uploads
+- [x] Circuit breakers & graceful degradation for third-party APIs (WHOIS, News API, Fact Check API)
+- [x] Cost monitoring for LLM API usage (OpenRouter/Groq) — track per-analysis cost
+- [x] Documentation kept in sync: `docs/architecture.md`, `docs/scoring-methodology.md`, `docs/api-reference.md`
 
-### Dashboard API & Frontend wiring (completed)
 
-- [x] `GET /api/v1/dashboard/summary` — user-scoped aggregate stats (analyses this week, avg accuracy, flagged sources, avg turnaround); returns `null` for values when insufficient data
-- [x] `GET /api/v1/sources` — paginated user-scoped source list ordered by reputation score
-- [x] `GET /api/v1/content` — paginated user-scoped content list for Recent analyses row
-- [x] `GET /api/v1/content/{id}/stream` — SSE endpoint for live analysis progress in AnalysisModal
-- [x] Frontend: `DashboardPage.tsx` fully wired to live endpoints with loading / error / empty states
-- [x] Frontend: sidebar uses React Router `<NavLink>` with `is-active` driven by actual route
-- [x] Frontend: inline submit-error banner replaces `alert(err.message)` on submission failure
-- [x] Frontend: `AnalysisModal` uses SSE stream with fallback polling for analysis progress
-- [x] Frontend: History, Sources, Settings pages functional and routed
-- [ ] Frontend: Claim graph page — interactive visualization (placeholder "Coming Soon")
-- [ ] Frontend: API keys page — token management (placeholder "Coming Soon")
-
-### Phase 4 Multi-Modal Ingestion (completed)
-
-- [x] `backend/app/services/ocr_service.py` — Screenshot OCR pipeline (Tesseract local + Google Vision fallback)
-- [x] `backend/app/services/media_preprocessor.py` — Image payload fetching/decoding (data URI, base64, URL)
-- [x] `backend/app/services/media_transcription.py` — Audio/video transcription placeholder (Groq Whisper plug-in point)
-- [x] `backend/app/services/pii_redactor.py` — Automatic PII redaction (email, phone, IP, address, name patterns)
-- [x] `backend/app/services/social_post_parser.py` — Social media post parsers (Twitter/X, Reddit, Facebook, Instagram, TikTok)
-- [x] `backend/app/services/c2pa_provenance.py` — C2PA provenance extraction placeholder
-- [x] `backend/app/services/vlm_alignment.py` — VLM image-caption alignment placeholder
-- [x] `backend/app/services/deepfake_screener.py` — Deepfake artifact screening placeholder
-- [x] `backend/app/services/image_reverse_search.py` — Image reverse search via Google Vision WEB_DETECTION
-- [x] `backend/app/workers/worker.py::_preprocess_modality` — Modality router dispatching image/screenshot/video/audio/social_post to pre-processors
-- [x] `backend/tests/test_phase4_multimodal.py` — 18 passing, 2 skipped (optional Pillow)
-
-## Open Decisions (need resolving, not just building)
-
-- [ ] Auth strategy: JWT + refresh tokens vs. session-based vs. third-party (Supabase Auth, Clerk, etc.)
-- [ ] Deployment target: single VPS vs. containerized (Docker Compose) vs. cloud-managed (Railway/Render/Fly.io/AWS)
-- [ ] Which source-reputation dataset(s) are legally usable long-term (verify ToS on any scraped dataset before relying on it in production)
-- [ ] WhatsApp Business API access path (official API has approval/cost overhead — evaluate vs. Telegram-first strategy)
-- [ ] License choice (MIT/Apache-2.0 for openness vs. proprietary if pursuing the enterprise API path commercially)
-- [ ] Data retention policy for submitted user content (privacy implications, especially for personal WhatsApp forwards)

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Credo - Real-Time Credibility Shield",
+  "version": "1.0.0",
+  "description": "Real-time mis/disinformation verification badge and ambient claim analysis.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Credo Analysis"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

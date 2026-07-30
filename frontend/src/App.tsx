@@ -29,8 +29,11 @@ import { ApiKeysPage } from './pages/ApiKeysPage';
 import { TrendingFeedPage } from './pages/TrendingFeedPage';
 import { PublisherWidgetsPage } from './pages/PublisherWidgetsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import ShareTargetPage from './pages/ShareTargetPage';
+import SourceDetailPage from './pages/SourceDetailPage';
 import { fetchHealth } from './api/client';
 import { HealthResponse } from './types';
+
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -166,6 +169,7 @@ export const App: React.FC = () => {
               <Route path="/dashboard/history" element={<HistoryPage />} />
               <Route path="/dashboard/trending" element={<TrendingFeedPage />} />
               <Route path="/dashboard/sources" element={<SourcesPage />} />
+              <Route path="/dashboard/sources/:domain" element={<SourceDetailPage />} />
               <Route path="/dashboard/review-queue" element={<ReviewQueuePage />} />
               <Route path="/dashboard/claim-graph" element={<ClaimGraphPage />} />
               <Route path="/dashboard/api-keys" element={<ApiKeysPage />} />
@@ -173,7 +177,9 @@ export const App: React.FC = () => {
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/dashboard/profile" element={<ProfilePage />} />
               <Route path="/dashboard/settings" element={<SettingsPage />} />
+              <Route path="/share-target" element={<ShareTargetPage />} />
               <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
+
             </Route>
             {/* Fallback to home for unknown non-dashboard routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

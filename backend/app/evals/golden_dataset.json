@@ -1,0 +1,53 @@
+[
+  {
+    "id": "item-001",
+    "modality": "text",
+    "text_content": "The WHO has officially declared that drinking hot lemon water destroys 100% of coronavirus particles within 24 hours.",
+    "expected_claims": ["Drinking hot lemon water destroys 100% of coronavirus particles within 24 hours."],
+    "expected_verdict": "contradicted",
+    "expected_category": "false",
+    "expected_min_score": 0.0,
+    "expected_max_score": 25.0
+  },
+  {
+    "id": "item-002",
+    "modality": "url",
+    "url": "https://www.theonion.com/fda-approves-new-prescription-strength-coffee-1819579000",
+    "text_content": "FDA approves new prescription strength coffee for chronic morning fatigue.",
+    "expected_claims": ["FDA approved prescription-strength coffee."],
+    "expected_verdict": "satire",
+    "expected_category": "satire",
+    "expected_min_score": 40.0,
+    "expected_max_score": 60.0
+  },
+  {
+    "id": "item-003",
+    "modality": "text",
+    "text_content": "NASA's James Webb Space Telescope captured high-resolution infrared images of distant galaxy clusters over 13 billion light years away.",
+    "expected_claims": ["NASA's James Webb Space Telescope captured infrared images of galaxy clusters over 13 billion light years away."],
+    "expected_verdict": "supported",
+    "expected_category": "true",
+    "expected_min_score": 80.0,
+    "expected_max_score": 100.0
+  },
+  {
+    "id": "item-004",
+    "modality": "text",
+    "text_content": "Breaking: Prime Minister resigns effective immediately due to economic collapse.",
+    "expected_claims": ["Prime Minister resigned immediately."],
+    "expected_verdict": "contradicted",
+    "expected_category": "temporal_mismatch",
+    "expected_min_score": 10.0,
+    "expected_max_score": 35.0
+  },
+  {
+    "id": "item-005",
+    "modality": "text",
+    "text_content": "You either support complete deregulation of energy markets or you want citizens to freeze in the dark during winter.",
+    "expected_claims": ["Energy market choice is strictly between deregulation or citizens freezing."],
+    "expected_verdict": "contradicted",
+    "expected_category": "false_dichotomy",
+    "expected_min_score": 20.0,
+    "expected_max_score": 45.0
+  }
+]
