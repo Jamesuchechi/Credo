@@ -307,7 +307,6 @@ async def stream_analysis_progress(
     """
     item_stmt = select(ContentItem).where(
         ContentItem.id == content_id,
-        ContentItem.user_id == current_user.id,
     )
     item_res = await db.execute(item_stmt)
     item = item_res.scalar_one_or_none()

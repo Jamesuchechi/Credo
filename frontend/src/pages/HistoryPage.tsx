@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { fetchContentList } from '../api/client';
 import { ContentListResponse } from '../types';
-import { AnalysisModal } from '../components/AnalysisModal';
 
 const iconMap: Record<string, React.ElementType> = {
   url: Globe,
@@ -30,7 +29,6 @@ export const HistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -368,7 +366,7 @@ export const HistoryPage: React.FC = () => {
             return (
               <div
                 key={item.id}
-                onClick={() => setActiveAnalysisId(item.id)}
+                onClick={() => navigate(`/dashboard/analysis/${item.id}`)}
                 style={{
                   padding: '20px 24px',
                   background: 'var(--surface)',
@@ -501,9 +499,6 @@ export const HistoryPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Deep-Dive Analysis Modal */}
-      <AnalysisModal contentId={activeAnalysisId} onClose={() => setActiveAnalysisId(null)} />
     </div>
   );
 };

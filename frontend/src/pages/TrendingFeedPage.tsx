@@ -11,7 +11,6 @@ import {
   X,
 } from 'lucide-react';
 import { fetchTrendingNews, submitContent } from '../api/client';
-import { AnalysisModal } from '../components/AnalysisModal';
 
 interface NewsArticle {
   id: string;
@@ -40,7 +39,6 @@ export const TrendingFeedPage: React.FC = () => {
   // Selected Article for Reader View Modal
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const [verifyingUrl, setVerifyingUrl] = useState<boolean>(false);
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
 
   const loadNews = async () => {
     setLoading(true);
@@ -69,7 +67,7 @@ export const TrendingFeedPage: React.FC = () => {
     try {
       const res = await submitContent({ modality: 'url', payload: url });
       setSelectedArticle(null);
-      setActiveAnalysisId(res.content_id);
+      navigate(`/dashboard/analysis/${res.content_id}`);
     } catch (err: any) {
       alert(`Verification submission failed: ${err.message}`);
     } finally {
@@ -358,9 +356,6 @@ export const TrendingFeedPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Modal for Pipeline Output */}
-      <AnalysisModal contentId={activeAnalysisId} onClose={() => setActiveAnalysisId(null)} />
     </div>
   );
 };

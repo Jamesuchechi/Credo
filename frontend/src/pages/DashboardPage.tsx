@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetchDashboardSummary, fetchContentList, fetchSources } from '../api/client';
-import { AnalysisModal } from '../components/AnalysisModal';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { DashboardSummaryResponse, ContentListResponse, SourcesListResponse } from '../types';
 
@@ -28,7 +27,6 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -311,7 +309,7 @@ export const DashboardPage: React.FC = () => {
                       <div
                         className="arow"
                         key={item.id}
-                        onClick={() => setActiveAnalysisId(item.id)}
+                        onClick={() => navigate(`/dashboard/analysis/${item.id}`)}
                         style={{ cursor: 'pointer', opacity: 1, transform: 'none' }}
                       >
                         <div className="arow-icon">
@@ -424,11 +422,6 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <AnalysisModal
-        contentId={activeAnalysisId}
-        onClose={() => setActiveAnalysisId(null)}
-      />
 
       <style>{`
         .topbar {

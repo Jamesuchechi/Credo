@@ -14,7 +14,6 @@ import {
   Layers,
 } from 'lucide-react';
 import { submitContent } from '../api/client';
-import { AnalysisModal } from '../components/AnalysisModal';
 import { ModalityType } from '../types';
 
 export const AnalyzePage: React.FC = () => {
@@ -24,7 +23,6 @@ export const AnalyzePage: React.FC = () => {
   const [submitPayload, setSubmitPayload] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Advanced Analysis Options
@@ -77,7 +75,7 @@ export const AnalyzePage: React.FC = () => {
       setIsSubmitting(false);
       setSubmitPayload('');
       setSelectedFile(null);
-      setActiveAnalysisId(res.content_id);
+      navigate(`/dashboard/analysis/${res.content_id}`);
     } catch (err: any) {
       setIsSubmitting(false);
       setSubmitError(err.message || 'Verification submission failed');
@@ -326,9 +324,6 @@ export const AnalyzePage: React.FC = () => {
           </div>
         </form>
       </div>
-
-      {/* Analysis Modal */}
-      <AnalysisModal contentId={activeAnalysisId} onClose={() => setActiveAnalysisId(null)} />
     </div>
   );
 };

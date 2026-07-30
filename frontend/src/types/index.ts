@@ -72,6 +72,20 @@ export interface ClaimItem {
   ttl_expires_at?: string;
 }
 
+export interface SocialEchoItem {
+  id: string;
+  platform: 'x' | 'instagram' | 'reddit' | 'tiktok';
+  author_name: string;
+  author_handle: string;
+  author_avatar?: string;
+  is_verified?: boolean;
+  post_text: string;
+  stance: 'amplifying_truth' | 'spreading_disinfo' | 'mixed';
+  reach_impressions: string;
+  post_url: string;
+  created_at: string;
+}
+
 export interface ContentAnalysisResponse {
   content_id: string;
   modality: ModalityType;
@@ -88,6 +102,7 @@ export interface ContentAnalysisResponse {
   reasoning_chain?: ReasoningChain;
   corroborating_sources?: CorroboratingSource[];
   claims?: ClaimItem[];
+  social_echoes?: SocialEchoItem[];
   model_version?: string;
   created_at: string;
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { CustomCursor } from './components/CustomCursor';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -10,7 +10,6 @@ import { ModalityMarquee } from './components/ModalityMarquee';
 import { TransparencySection } from './components/TransparencySection';
 import { WaitlistSection } from './components/WaitlistSection';
 import { Footer } from './components/Footer';
-import { AnalysisModal } from './components/AnalysisModal';
 import { DashboardLayout } from './components/DashboardLayout';
 
 import { ThemeProvider } from './context/ThemeContext';
@@ -31,6 +30,7 @@ import { PublisherWidgetsPage } from './pages/PublisherWidgetsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import ShareTargetPage from './pages/ShareTargetPage';
 import SourceDetailPage from './pages/SourceDetailPage';
+import { AnalysisDetailPage } from './pages/AnalysisDetailPage';
 import { fetchHealth } from './api/client';
 import { HealthResponse } from './types';
 
@@ -72,7 +72,7 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 // Landing Page Component
 const LandingPage: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [activeContentId, setActiveContentId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchHealth()
@@ -115,7 +115,7 @@ const LandingPage: React.FC = () => {
         </div>
       )}
       <main>
-        <HeroSection onAnalysisStart={(id) => setActiveContentId(id)} />
+        <HeroSection onAnalysisStart={(id) => navigate(`/dashboard/analysis/${id}`)} />
         <PrinciplesSection />
         <SealMoment />
         <PipelineSection />
@@ -124,11 +124,6 @@ const LandingPage: React.FC = () => {
         <WaitlistSection />
       </main>
       <Footer />
-
-      <AnalysisModal
-        contentId={activeContentId}
-        onClose={() => setActiveContentId(null)}
-      />
     </>
   );
 };
@@ -140,6 +135,7 @@ export const App: React.FC = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/analysis/:id" element={<AnalysisDetailPage />} />
             <Route
               path="/login"
               element={
@@ -166,6 +162,7 @@ export const App: React.FC = () => {
             >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/analyze" element={<AnalyzePage />} />
+              <Route path="/dashboard/analysis/:id" element={<AnalysisDetailPage />} />
               <Route path="/dashboard/history" element={<HistoryPage />} />
               <Route path="/dashboard/trending" element={<TrendingFeedPage />} />
               <Route path="/dashboard/sources" element={<SourcesPage />} />
@@ -179,7 +176,6 @@ export const App: React.FC = () => {
               <Route path="/dashboard/settings" element={<SettingsPage />} />
               <Route path="/share-target" element={<ShareTargetPage />} />
               <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
-
             </Route>
             {/* Fallback to home for unknown non-dashboard routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -189,3 +185,4 @@ export const App: React.FC = () => {
     </ThemeProvider>
   );
 };
+
