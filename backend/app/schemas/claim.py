@@ -22,7 +22,7 @@ class ClaimResponse(BaseModel):
     extracted_speaker: str | None = None
     verdict: str
     confidence_score: float
-    confidence_interval: dict[str, float] | None = None
+    confidence_interval: dict[str, Any] | None = None
     evidence_summary: str
     reasoning_chain: dict[str, Any]
     created_at: datetime

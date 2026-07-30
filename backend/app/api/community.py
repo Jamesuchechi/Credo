@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.claim import Claim
 from app.models.claim_correction import ClaimCorrection
@@ -177,7 +177,7 @@ async def get_review_queue(
 async def review_correction(
     correction_id: uuid.UUID,
     request: ReviewDecisionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """

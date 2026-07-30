@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_admin
 from app.db.session import get_db
 from app.main import app
 from app.models.claim import Claim
@@ -20,6 +20,7 @@ def make_test_user():
         email="community_tester@credo.app",
         hashed_password="dummy",
         full_name="Community Tester",
+        role="admin",
         is_active=True,
         created_at=datetime.utcnow(),
     )
@@ -112,6 +113,7 @@ async def test_phase6_community_endpoints():
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_current_user
+    app.dependency_overrides[require_admin] = override_current_user
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # 1. Submit claim correction

@@ -74,11 +74,11 @@ This phase alone is a usable, demoable product.
 
 - [x] Screenshot OCR pipeline (`backend/app/services/ocr_service.py`) — Tesseract local + Google Vision fallback
 - [x] Image pre-processor (`backend/app/services/media_preprocessor.py`) — data URI / base64 / URL decoding
-- [x] C2PA / Content Credentials provenance metadata extraction (`backend/app/services/c2pa_provenance.py`) — placeholder preserving ingestion flow
+- [x] C2PA / Content Credentials provenance metadata extraction (`backend/app/services/c2pa_provenance.py`) — JUMBF binary manifest scanner & EXIF software/edit history parser
 - [x] Image reverse search integration (`backend/app/services/image_reverse_search.py`) — Google Vision WEB_DETECTION when API key configured
-- [x] VLM Image-Caption context alignment (`backend/app/services/vlm_alignment.py`) — placeholder preserving ingestion flow
-- [x] Audio/video transcription pipeline (`backend/app/services/media_transcription.py`) — placeholder preserving ingestion flow (Groq Whisper plug-in point)
-- [x] Deepfake artifact screening (`backend/app/services/deepfake_screener.py`) — placeholder preserving ingestion flow
+- [x] VLM Image-Caption context alignment (`backend/app/services/vlm_alignment.py`) — VLM image-caption cross-reference alignment engine
+- [x] Audio/video transcription pipeline (`backend/app/services/media_transcription.py`) — Groq Whisper speech-to-text audio/video transcription pipeline
+- [x] Deepfake artifact screening (`backend/app/services/deepfake_screener.py`) — AI generation artifact scanner, PNG tEXt parameters, and EXIF hardware signature check
 - [x] Automatic PII Redaction (`backend/app/services/pii_redactor.py`) — regex-based redaction before external API calls and storage
 - [x] Social media post parsers (`backend/app/services/social_post_parser.py`) — Twitter/X, Reddit, Facebook, Instagram, TikTok URL detection
 - [x] Generalize `content_items` ingestion API to cleanly route each modality through its pre-processor (`backend/app/workers/worker.py::_preprocess_modality`)

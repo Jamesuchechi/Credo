@@ -3,6 +3,7 @@ import json
 import logging
 import uuid
 
+from arq import cron
 from arq.connections import RedisSettings
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy import select
@@ -53,7 +54,7 @@ async def _preprocess_modality(item: ContentItem, redis_client: AsyncRedis, cont
         url = item.url or raw.strip()
         await set_progress(redis_client, content_id_str, "extracting", "Extracting article content and checking domain WHOIS")
         extraction = await extract_article_content(url)
-        extracted_text = extraction["text"] if extraction["success"] else raw
+        extracted_text = extraction["extracted_text"] if extraction["success"] else raw
         if extraction["success"]:
             item.title = extraction["title"]
             item.extracted_text = extracted_text
@@ -228,6 +229,17 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
             await redis_client.close()
 
 
+async def sanitize_and_anonymize_expired_items_job(ctx: dict) -> int:
+    """Scheduled background job to purge expired PII and user content per NDPR/GDPR policy."""
+    logger.info("Starting scheduled GDPR/NDPR data retention purge job...")
+    from app.services.privacy_service import PrivacyService
+    privacy_svc = PrivacyService(retention_days=30)
+    async with AsyncSessionLocal() as session:
+        purged_count = await privacy_svc.sanitize_and_anonymize_expired_items(session)
+        logger.info(f"Scheduled data retention purge complete: {purged_count} items purged.")
+        return purged_count
+
+
 from app.db.init_db import init_db
 
 
@@ -241,7 +253,8 @@ async def shutdown(ctx: dict):
 
 
 class WorkerSettings:
-    functions = [process_content_item]
+    functions = [process_content_item, sanitize_and_anonymize_expired_items_job]
+    cron_jobs = [cron(sanitize_and_anonymize_expired_items_job, hour=2, minute=0)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)

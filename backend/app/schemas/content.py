@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.claim import ClaimResponse
 
 
 class ContentSubmissionRequest(BaseModel):
     modality: str = "url"
-    payload: str
+    payload: str = Field(..., max_length=100_000)
     metadata: dict[str, Any] | None = None
 
 
@@ -23,7 +23,7 @@ class CredibilityCardResponse(BaseModel):
     content_id: uuid.UUID
     title: str | None
     composite_score: float | None
-    confidence_interval: dict[str, float] | None
+    confidence_interval: dict[str, Any] | None
     dimension_scores: dict[str, Any] | None
     verdict: str | None
     claims_count: int
@@ -39,7 +39,7 @@ class ContentAnalysisResponse(BaseModel):
     title: str | None = None
     status: str
     composite_score: float | None = None
-    confidence_interval: dict[str, float] | None = None
+    confidence_interval: dict[str, Any] | None = None
     dimension_scores: dict[str, Any] | None = None
     reasoning_chain: dict[str, Any] | None = None
     corroborating_sources: list[dict[str, Any]] | None = None

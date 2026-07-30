@@ -1,5 +1,6 @@
 from app.models.analysis_result import AnalysisResult
 from app.models.api_key import ApiKey
+from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.claim import Claim
 from app.models.claim_correction import ClaimCorrection
@@ -12,6 +13,7 @@ from app.models.webhook import WebhookDelivery, WebhookEndpoint
 __all__ = [
     "AnalysisResult",
     "ApiKey",
+    "AuditLog",
     "Base",
     "Claim",
     "ClaimCorrection",
@@ -22,4 +24,3 @@ __all__ = [
     "WebhookDelivery",
     "WebhookEndpoint",
 ]
-

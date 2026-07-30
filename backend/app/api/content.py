@@ -18,7 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
 from app.core.config import settings
-from app.db.session import get_db
+from app.core.rate_limiter import check_rate_limit
+from app.db.session import AsyncSessionLocal, get_db
 from app.models.analysis_result import AnalysisResult
 from app.models.claim import Claim
 from app.models.content_item import ContentItem
@@ -49,9 +50,10 @@ def generate_content_hash(payload: str) -> str:
     return hashlib.sha256(payload.strip().encode("utf-8")).hexdigest()
 
 
-def _compute_confidence_interval(composite_score: float | None, claims: list[Any]) -> dict[str, float] | None:
+def _compute_confidence_interval(composite_score: float | None, claims: list[Any]) -> dict[str, Any] | None:
     if composite_score is None:
         return None
+    margin_reason = ""
     if claims:
         import statistics
         claim_scores_for_ci = []
@@ -65,14 +67,38 @@ def _compute_confidence_interval(composite_score: float | None, claims: list[Any
         if len(claim_scores_for_ci) > 1:
             std_dev = statistics.stdev(claim_scores_for_ci)
             margin = min(12.0, max(3.0, std_dev / (len(claim_scores_for_ci) ** 0.5)))
+            margin_reason = f"Calculated from variance across {len(claim_scores_for_ci)} claims (std_dev ±{round(std_dev, 1)})"
         else:
             margin = 8.0
+            margin_reason = "Single claim extracted; default claim variance margin ±8.0 applied."
     else:
         margin = 10.0
+        margin_reason = "No granular claims extracted; baseline source & corroboration margin ±10.0 applied."
+
     return {
         "lower": round(max(0.0, composite_score - margin), 1),
         "upper": round(min(100.0, composite_score + margin), 1),
         "margin": round(margin, 1),
+        "margin_reason": margin_reason,
+    }
+
+
+from app.core.cost_tracker import check_daily_llm_spend_limit, get_user_daily_spend, DEFAULT_DAILY_SPEND_LIMIT_USD
+
+
+@router.get("/analytics/llm-spend")
+async def get_llm_spend_analytics(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the authenticated user's accumulated daily LLM API spend and budget cap.
+    """
+    spend = await get_user_daily_spend(current_user.id)
+    return {
+        "user_id": str(current_user.id),
+        "daily_spend_usd": round(spend, 4),
+        "daily_spend_limit_usd": DEFAULT_DAILY_SPEND_LIMIT_USD,
+        "is_limit_exceeded": spend >= DEFAULT_DAILY_SPEND_LIMIT_USD,
     }
 
 
@@ -86,6 +112,15 @@ async def submit_content(
     Submits a Content Item (URL or raw text) for credibility analysis.
     Deduplicates via Redis / content_hash and dispatches to background ARQ worker.
     """
+    await check_rate_limit(str(current_user.id), "submit_content", max_requests=30, window_seconds=60)
+    
+    is_exceeded, current_spend = await check_daily_llm_spend_limit(current_user.id)
+    if is_exceeded:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily LLM spend limit reached (${current_spend:.2f} / $5.00 USD). Please try again tomorrow.",
+        )
+
     content_hash = generate_content_hash(request.payload)
     url_val = request.payload if request.modality == "url" else None
 
@@ -132,15 +167,21 @@ async def submit_content(
     )
 
 
-@router.get("/content/{content_id}", response_model=ContentAnalysisResponse)
+@router.get("/content/{content_id}")
 async def get_content_analysis(
     content_id: uuid.UUID,
+    compact: bool = Query(False, description="Returns a low-bandwidth text-only credibility summary payload"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Retrieves the current status and detailed multi-dimensional score breakdown for a Content Item.
+    Supports low-bandwidth compact mode (`?compact=true`) for messaging bots.
     """
-    stmt = select(ContentItem).where(ContentItem.id == content_id)
+    stmt = select(ContentItem).where(
+        ContentItem.id == content_id,
+        ContentItem.user_id == current_user.id,
+    )
     res = await db.execute(stmt)
     item = res.scalar_one_or_none()
 
@@ -156,6 +197,30 @@ async def get_content_analysis(
     claims_stmt = select(Claim).where(Claim.content_item_id == content_id)
     claims_res = await db.execute(claims_stmt)
     db_claims = claims_res.scalars().all()
+
+    confidence_interval = _compute_confidence_interval(analysis.composite_score if analysis else None, db_claims)
+
+    if compact:
+        verdict = "unverified"
+        if analysis and analysis.composite_score is not None:
+            verdict = "VERIFIED" if analysis.composite_score >= 60 else ("MIXED" if analysis.composite_score >= 30 else "DISPUTED")
+
+        return {
+            "content_id": str(item.id),
+            "status": item.status,
+            "verdict": verdict,
+            "score": analysis.composite_score if analysis else None,
+            "claims_count": len(db_claims),
+            "top_claims": [
+                {
+                    "text": c.claim_text,
+                    "verdict": c.verdict,
+                    "confidence": c.confidence_score,
+                }
+                for c in db_claims[:3]
+            ],
+            "low_bandwidth_mode": True,
+        }
 
     claims_list = [
         ClaimResponse(
@@ -173,8 +238,6 @@ async def get_content_analysis(
         )
         for c in db_claims
     ]
-
-    confidence_interval = _compute_confidence_interval(analysis.composite_score if analysis else None, db_claims)
 
     return ContentAnalysisResponse(
         content_id=item.id,
@@ -307,6 +370,7 @@ async def stream_analysis_progress(
     """
     item_stmt = select(ContentItem).where(
         ContentItem.id == content_id,
+        ContentItem.user_id == current_user.id,
     )
     item_res = await db.execute(item_stmt)
     item = item_res.scalar_one_or_none()
@@ -376,59 +440,63 @@ async def stream_analysis_progress(
                     progress = json.loads(progress_raw)
                     yield f"data: {json.dumps(progress)}\n\n"
 
-                status_stmt = select(ContentItem).where(ContentItem.id == content_id)
-                status_res = await db.execute(status_stmt)
-                current_item = status_res.scalar_one_or_none()
-
-                if current_item and current_item.status == "complete":
-                    result_stmt = select(AnalysisResult).where(
-                        AnalysisResult.content_item_id == content_id
+                async with AsyncSessionLocal() as session:
+                    status_stmt = select(ContentItem).where(
+                        ContentItem.id == content_id,
+                        ContentItem.user_id == current_user.id,
                     )
-                    result_res = await db.execute(result_stmt)
-                    analysis = result_res.scalar_one_or_none()
+                    status_res = await session.execute(status_stmt)
+                    current_item = status_res.scalar_one_or_none()
 
-                    if analysis:
-                        claims_stmt = select(Claim).where(Claim.content_item_id == content_id)
-                        claims_res = await db.execute(claims_stmt)
-                        db_claims = claims_res.scalars().all()
-                        claims_list = [
-                            ClaimResponse(
-                                id=c.id,
-                                content_item_id=c.content_item_id,
-                                claim_text=c.claim_text,
-                                extracted_speaker=c.extracted_speaker,
-                                verdict=c.verdict,
-                                confidence_score=c.confidence_score,
-                                confidence_interval=_compute_confidence_interval(analysis.composite_score, db_claims),
-                                evidence_summary=c.evidence_summary,
-                                reasoning_chain=c.reasoning_chain,
-                                created_at=c.created_at,
-                                ttl_expires_at=c.ttl_expires_at,
-                            )
-                            for c in db_claims
-                        ]
-                        confidence_interval = _compute_confidence_interval(analysis.composite_score, db_claims)
-                        result_data = ContentAnalysisResponse(
-                            content_id=item.id,
-                            modality=item.modality,
-                            url=item.url,
-                            title=item.title,
-                            status=item.status,
-                            composite_score=analysis.composite_score,
-                            confidence_interval=confidence_interval,
-                            dimension_scores=analysis.dimension_scores,
-                            reasoning_chain=analysis.reasoning_chain,
-                            corroborating_sources=analysis.corroborating_sources,
-                            claims=claims_list,
-                            model_version=analysis.model_version,
-                            created_at=item.created_at,
+                    if current_item and current_item.status == "complete":
+                        result_stmt = select(AnalysisResult).where(
+                            AnalysisResult.content_item_id == content_id
                         )
-                        yield f"data: {result_data.model_dump(mode='json')}\n\n"
-                    return
+                        result_res = await session.execute(result_stmt)
+                        analysis = result_res.scalar_one_or_none()
 
-                if current_item and current_item.status == "failed":
-                    yield f"data: {json.dumps({'phase': 'failed', 'message': 'Analysis failed'})}\n\n"
-                    return
+                        if analysis:
+                            claims_stmt = select(Claim).where(Claim.content_item_id == content_id)
+                            claims_res = await session.execute(claims_stmt)
+                            db_claims = claims_res.scalars().all()
+                            claims_list = [
+                                ClaimResponse(
+                                    id=c.id,
+                                    content_item_id=c.content_item_id,
+                                    claim_text=c.claim_text,
+                                    extracted_speaker=c.extracted_speaker,
+                                    verdict=c.verdict,
+                                    confidence_score=c.confidence_score,
+                                    confidence_interval=_compute_confidence_interval(analysis.composite_score, db_claims),
+                                    evidence_summary=c.evidence_summary,
+                                    reasoning_chain=c.reasoning_chain,
+                                    created_at=c.created_at,
+                                    ttl_expires_at=c.ttl_expires_at,
+                                )
+                                for c in db_claims
+                            ]
+                            confidence_interval = _compute_confidence_interval(analysis.composite_score, db_claims)
+                            result_data = ContentAnalysisResponse(
+                                content_id=item.id,
+                                modality=item.modality,
+                                url=item.url,
+                                title=item.title,
+                                status=item.status,
+                                composite_score=analysis.composite_score,
+                                confidence_interval=confidence_interval,
+                                dimension_scores=analysis.dimension_scores,
+                                reasoning_chain=analysis.reasoning_chain,
+                                corroborating_sources=analysis.corroborating_sources,
+                                claims=claims_list,
+                                model_version=analysis.model_version,
+                                created_at=item.created_at,
+                            )
+                            yield f"data: {result_data.model_dump(mode='json')}\n\n"
+                        return
+
+                    if current_item and current_item.status == "failed":
+                        yield f"data: {json.dumps({'phase': 'failed', 'message': 'Analysis failed'})}\n\n"
+                        return
 
             yield f"data: {json.dumps({'phase': 'timeout', 'message': 'Analysis is taking longer than expected'})}\n\n"
         finally:
@@ -452,8 +520,19 @@ async def get_model_version_changelog():
     Returns history of scoring model versions and feature updates.
     """
     return ModelVersionChangelogResponse(
-        current_version="v3.0.0-phase3",
+        current_version="v4.0.0-phase4",
         entries=[
+            ModelVersionEntry(
+                version="v4.0.0-phase4",
+                date="2026-07-30",
+                title="Phase 4: Multi-Modal C2PA, VLM Alignment, Whisper & Deepfake Screening",
+                changes=[
+                    "Integrated C2PA / Content Credentials manifest scanner & EXIF edit history parser.",
+                    "Added VLM Image-Caption context alignment engine for visual miscontextualization detection.",
+                    "Integrated Groq Whisper speech-to-text audio and video transcription pipeline.",
+                    "Added AI generation and deepfake artifact screening engine."
+                ]
+            ),
             ModelVersionEntry(
                 version="v3.0.0-phase3",
                 date="2026-07-29",
@@ -563,6 +642,11 @@ async def submit_content_batch(
     Submits a batch of content items (chat thread / forwarded message chain)
     for per-message credibility verification.
     """
+    if len(request.items) > 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Batch size limit exceeded. Maximum 20 items allowed per batch request."
+        )
     queued_ids = []
     for item_req in request.items:
         sub_res = await submit_content(item_req, current_user=current_user, db=db)

@@ -2,7 +2,7 @@ import uuid
 import secrets
 import hashlib
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,7 @@ from app.api.auth import get_current_user
 from app.db.session import get_db
 from app.models.api_key import ApiKey
 from app.models.user import User
+from app.services.audit_service import log_audit_event
 
 router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 
@@ -49,6 +50,7 @@ async def list_api_keys(
 @router.post("", response_model=ApiKeyResponse, status_code=status.HTTP_201_CREATED)
 async def create_api_key(
     payload: ApiKeyCreateRequest,
+    raw_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -70,6 +72,16 @@ async def create_api_key(
     db.add(new_key)
     await db.commit()
 
+    await log_audit_event(
+        db,
+        action="api_key.create",
+        actor_user_id=current_user.id,
+        resource_type="api_key",
+        resource_id=str(new_key.id),
+        request=raw_request,
+        metadata={"name": new_key.name, "prefix": new_key.prefix},
+    )
+
     return ApiKeyResponse(
         id=new_key.id,
         name=new_key.name,
@@ -85,6 +97,7 @@ async def create_api_key(
 @router.delete("/{key_id}", status_code=status.HTTP_200_OK)
 async def revoke_api_key(
     key_id: uuid.UUID,
+    raw_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -97,4 +110,14 @@ async def revoke_api_key(
 
     key.is_active = False
     await db.commit()
+
+    await log_audit_event(
+        db,
+        action="api_key.revoke",
+        actor_user_id=current_user.id,
+        resource_type="api_key",
+        resource_id=str(key.id),
+        request=raw_request,
+    )
+
     return {"message": "API key revoked successfully"}

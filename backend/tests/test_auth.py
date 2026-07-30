@@ -16,7 +16,7 @@ async def test_auth_register_and_login():
     fake_user = User(
         id=uuid.uuid4(),
         email="test@example.com",
-        hashed_password=hash_password("secretpass123"),
+        hashed_password=hash_password("Secretpass123"),
         full_name="Test User",
         is_active=True,
         created_at=datetime.utcnow()
@@ -24,15 +24,19 @@ async def test_auth_register_and_login():
 
     mock_db = AsyncMock()
 
-    # Mock execute result (none existing for register)
-    mock_res_none = MagicMock()
-    mock_res_none.scalar_one_or_none.return_value = None
+    registered = False
 
-    # Mock execute result (user found for login)
-    mock_res_user = MagicMock()
-    mock_res_user.scalar_one_or_none.return_value = fake_user
+    async def mock_execute(stmt):
+        nonlocal registered
+        res = MagicMock()
+        if not registered:
+            res.scalar_one_or_none.return_value = None
+            registered = True
+        else:
+            res.scalar_one_or_none.return_value = fake_user
+        return res
 
-    mock_db.execute.side_effect = [mock_res_none, mock_res_user, mock_res_user]
+    mock_db.execute.side_effect = mock_execute
 
     async def override_get_db():
         yield mock_db
@@ -41,7 +45,7 @@ async def test_auth_register_and_login():
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # 1. Register
-        reg_payload = {"email": "test@example.com", "password": "secretpass123", "full_name": "Test User"}
+        reg_payload = {"email": "test@example.com", "password": "Secretpass123", "full_name": "Test User"}
         res_reg = await ac.post("/api/v1/auth/register", json=reg_payload)
         assert res_reg.status_code == 201
         data_reg = res_reg.json()
@@ -51,7 +55,7 @@ async def test_auth_register_and_login():
         token = data_reg["access_token"]
 
         # 2. Login
-        login_payload = {"email": "test@example.com", "password": "secretpass123"}
+        login_payload = {"email": "test@example.com", "password": "Secretpass123"}
         res_login = await ac.post("/api/v1/auth/login", json=login_payload)
         assert res_login.status_code == 200
         data_login = res_login.json()
