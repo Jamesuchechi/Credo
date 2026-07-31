@@ -9,7 +9,7 @@ interface ClaimNetworkGraphProps {
 interface NodeData {
   id: string;
   label: string;
-  type: 'root' | 'claim' | 'source';
+  type: 'root' | 'claim' | 'source' | 'author';
   verdict?: 'supported' | 'contradicted' | 'unverified';
   score?: number;
   sublabel?: string;
@@ -21,7 +21,7 @@ interface NodeData {
 interface EdgeData {
   from: string;
   to: string;
-  type: 'claim_to_root' | 'source_to_claim';
+  type: 'claim_to_root' | 'source_to_claim' | 'author_to_root';
 }
 
 export const ClaimNetworkGraph: React.FC<ClaimNetworkGraphProps> = ({ analysis }) => {
@@ -49,6 +49,22 @@ export const ClaimNetworkGraph: React.FC<ClaimNetworkGraphProps> = ({ analysis }
     x: centerX,
     y: centerY,
   });
+
+  // Author node (if social_author is present)
+  if ((analysis as any).social_author) {
+    const author = (analysis as any).social_author;
+    const authorId = `author-${author.id || author.handle}`;
+    nodes.push({
+      id: authorId,
+      label: `@${author.handle}`,
+      type: 'author',
+      sublabel: `${author.platform.toUpperCase()} Author`,
+      x: centerX - 120,
+      y: centerY - 120,
+      raw: author,
+    });
+    edges.push({ from: rootId, to: authorId, type: 'author_to_root' });
+  }
 
   // Claim nodes (Middle Ring)
   const claims = analysis.claims || [];
@@ -267,6 +283,9 @@ export const ClaimNetworkGraph: React.FC<ClaimNetworkGraphProps> = ({ analysis }
             } else if (node.type === 'source') {
               fillColor = 'rgba(59, 130, 246, 0.15)';
               strokeColor = '#3b82f6';
+            } else if (node.type === 'author') {
+              fillColor = 'rgba(168, 85, 247, 0.15)';
+              strokeColor = '#a855f7';
             }
 
             const radius = node.type === 'root' ? 32 : node.type === 'claim' ? 24 : 18;
@@ -296,7 +315,7 @@ export const ClaimNetworkGraph: React.FC<ClaimNetworkGraphProps> = ({ analysis }
                   fontFamily="var(--mono)"
                   pointerEvents="none"
                 >
-                  {node.type === 'root' ? 'CREDO' : node.type === 'claim' ? 'CLAIM' : 'SRC'}
+                  {node.type === 'root' ? 'CREDO' : node.type === 'claim' ? 'CLAIM' : node.type === 'author' ? 'AUTHOR' : 'SRC'}
                 </text>
                 <text
                   textAnchor="middle"

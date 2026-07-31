@@ -71,7 +71,11 @@ async def verify_and_create_claim(
     now = datetime.utcnow()
     ttl_expires = now + timedelta(days=7)
 
-    # 4. Construct Claim object
+    # 4. Compute vector embedding for topic clustering
+    from app.services.embedding_service import embed_claim_text
+    embedding_vector = await embed_claim_text(extracted_claim.claim_text)
+
+    # 5. Construct Claim object
     claim = Claim(
         id=uuid.uuid4(),
         content_item_id=content_item_id,
@@ -87,6 +91,8 @@ async def verify_and_create_claim(
         created_at=now,
         ttl_expires_at=ttl_expires
     )
+    if hasattr(claim, "embedding"):
+        setattr(claim, "embedding", embedding_vector)
 
     db.add(claim)
     return claim

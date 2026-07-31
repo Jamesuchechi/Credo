@@ -44,6 +44,7 @@ class ContentAnalysisResponse(BaseModel):
     reasoning_chain: dict[str, Any] | None = None
     corroborating_sources: list[dict[str, Any]] | None = None
     claims: list[ClaimResponse] = []
+    social_echoes: list[dict[str, Any]] | None = None
     model_version: str | None = None
     created_at: datetime
 

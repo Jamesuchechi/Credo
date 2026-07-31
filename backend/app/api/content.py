@@ -36,6 +36,7 @@ from app.schemas.content import (
     SubmissionResponse,
 )
 from app.schemas.source import SourceResponse
+from app.services.social_echo_service import gather_social_echoes
 from app.services.source_reputation_service import (
     calculate_source_reputation_score,
     get_or_create_source,
@@ -239,6 +240,9 @@ async def get_content_analysis(
         for c in db_claims
     ]
 
+    query_text = item.title or (item.raw_payload[:150] if item.raw_payload else "")
+    social_echoes = await gather_social_echoes(query_text) if query_text else []
+
     return ContentAnalysisResponse(
         content_id=item.id,
         modality=item.modality,
@@ -251,9 +255,60 @@ async def get_content_analysis(
         reasoning_chain=analysis.reasoning_chain if analysis else None,
         corroborating_sources=analysis.corroborating_sources if analysis else None,
         claims=claims_list,
+        social_echoes=social_echoes,
         model_version=analysis.model_version if analysis else None,
         created_at=item.created_at
     )
+
+
+@router.get("/content/{content_id}/related")
+async def get_related_claims(
+    content_id: uuid.UUID,
+    limit: int = Query(5, ge=1, le=20),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Finds cross-item related claims for all claims extracted within the target Content Item.
+    Enforces user ownership on the requested item and uses vector similarity clustering.
+    """
+    item_stmt = select(ContentItem).where(
+        ContentItem.id == content_id,
+        ContentItem.user_id == current_user.id,
+    )
+    res = await db.execute(item_stmt)
+    item = res.scalar_one_or_none()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Content item not found")
+
+    claims_stmt = select(Claim).where(Claim.content_item_id == content_id)
+    claims_res = await db.execute(claims_stmt)
+    db_claims = claims_res.scalars().all()
+
+    if not db_claims:
+        return {"content_id": str(content_id), "claims_count": 0, "related_claims": []}
+
+    from app.services.claim_clustering_service import find_related_claims
+
+    all_related = []
+    seen_ids = set()
+
+    for claim in db_claims:
+        matches = await find_related_claims(db, claim.id, limit=limit)
+        for m in matches:
+            if m["claim_id"] not in seen_ids:
+                seen_ids.add(m["claim_id"])
+                m["source_claim_id"] = str(claim.id)
+                all_related.append(m)
+
+    all_related.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+    return {
+        "content_id": str(content_id),
+        "claims_count": len(db_claims),
+        "related_claims": all_related[:limit],
+    }
 
 
 @router.get("/sources/{domain}", response_model=SourceResponse)

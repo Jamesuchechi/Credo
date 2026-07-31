@@ -22,19 +22,21 @@ import {
   Code,
   Radio,
 } from 'lucide-react';
-import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard, submitClaimCorrection } from '../api/client';
+import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard, submitClaimCorrection, fetchRelatedClaims } from '../api/client';
 import { ContentAnalysisResponse } from '../types';
 import { ModelVersionChangelogModal } from '../components/ModelVersionChangelogModal';
 import { ClaimNetworkGraph } from '../components/ClaimNetworkGraph';
 import { EmbedWidgetModal } from '../components/EmbedWidgetModal';
 import { DebunkCardModal } from '../components/DebunkCardModal';
 import { SocialEchoRadar } from '../components/SocialEchoRadar';
+import { AuthorCard } from '../components/AuthorCard';
 
 export const AnalysisDetailPage: React.FC = () => {
   const { id: contentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [analysis, setAnalysis] = useState<ContentAnalysisResponse | null>(null);
+  const [relatedClaims, setRelatedClaims] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<string>('queued');
   const [showChangelog, setShowChangelog] = useState(false);
@@ -100,6 +102,14 @@ export const AnalysisDetailPage: React.FC = () => {
             setError('Analysis failed');
             setPhase('failed');
           }
+        }
+      })
+      .catch(() => {});
+
+    fetchRelatedClaims(contentId)
+      .then((data) => {
+        if (isSubscribed && data?.related_claims) {
+          setRelatedClaims(data.related_claims);
         }
       })
       .catch(() => {});
@@ -663,6 +673,21 @@ export const AnalysisDetailPage: React.FC = () => {
           {activeTab === 'overview' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '28px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                {/* Social Author Card */}
+                {(analysis as any).social_author && (
+                  <AuthorCard
+                    platform={(analysis as any).social_author.platform}
+                    handle={(analysis as any).social_author.handle}
+                    displayName={(analysis as any).social_author.display_name}
+                    verified={(analysis as any).social_author.verified}
+                    followerCount={(analysis as any).social_author.follower_count}
+                    accountCreatedAt={(analysis as any).social_author.account_created_at}
+                    reputationScore={(analysis as any).social_author.reputation_score || 70.0}
+                    reputationLabel={(analysis as any).social_author.reputation_label}
+                    claimsCount={(analysis as any).social_author.claims_count || 1}
+                  />
+                )}
+
                 {/* Reasoning Chain summary */}
                 {analysis.reasoning_chain && (
                   <div className="panel" style={{ padding: '24px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)' }}>
@@ -950,6 +975,62 @@ export const AnalysisDetailPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Related Claims Panel (Vector Cosine Similarity Clustering) */}
+                {relatedClaims.length > 0 && (
+                  <div className="panel" style={{ padding: '20px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <h4 style={{ fontFamily: 'var(--serif)', fontSize: '18px', fontWeight: 500, marginBottom: '6px', color: 'var(--brass)' }}>
+                      🔗 Related Claims Across Network ({relatedClaims.length})
+                    </h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '14px', lineHeight: 1.4 }}>
+                      Similar assertions made across other analyzed content items detected via pgvector semantic clustering.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {relatedClaims.map((item, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '12px',
+                            background: 'var(--surface-2)',
+                            borderRadius: '8px',
+                            border: '1px solid var(--line)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontFamily: 'var(--mono)',
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                textTransform: 'uppercase',
+                                background: item.verdict === 'supported' ? 'var(--verified-dim)' : item.verdict === 'contradicted' ? 'var(--disputed-dim)' : 'rgba(224,185,78,0.14)',
+                                color: item.verdict === 'supported' ? 'var(--verified)' : item.verdict === 'contradicted' ? 'var(--disputed)' : 'var(--mislead)',
+                              }}
+                            >
+                              {item.verdict}
+                            </span>
+                            <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--brass)' }}>
+                              {(item.similarity_score * 100).toFixed(0)}% Similar
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '13px', color: 'var(--text)', margin: 0, lineHeight: 1.4 }}>
+                            "{item.claim_text}"
+                          </p>
+                          {item.extracted_speaker && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--mono)' }}>
+                              Speaker: {item.extracted_speaker}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Corroborating References */}
                 {analysis.corroborating_sources && analysis.corroborating_sources.length > 0 && (

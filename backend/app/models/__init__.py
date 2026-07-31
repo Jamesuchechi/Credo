@@ -6,6 +6,7 @@ from app.models.claim import Claim
 from app.models.claim_correction import ClaimCorrection
 from app.models.content_item import ContentItem
 from app.models.contributor import Contributor
+from app.models.social_author import SocialAuthor
 from app.models.source import Source
 from app.models.user import User
 from app.models.webhook import WebhookDelivery, WebhookEndpoint
@@ -19,6 +20,7 @@ __all__ = [
     "ClaimCorrection",
     "ContentItem",
     "Contributor",
+    "SocialAuthor",
     "Source",
     "User",
     "WebhookDelivery",

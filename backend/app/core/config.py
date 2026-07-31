@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     WHOIS_API_KEY: str = ""
     GOOGLE_VISION_API_KEY: str = ""
 
+    # Social Ingestion APIs
+    X_API_BEARER_TOKEN: str = ""
+    REDDIT_CLIENT_ID: str = ""
+    REDDIT_CLIENT_SECRET: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

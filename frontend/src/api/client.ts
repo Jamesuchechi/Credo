@@ -252,6 +252,26 @@ export async function revokeApiKey(keyId: string): Promise<{ message: string }> 
   return response.json();
 }
 
+export async function fetchAuthorProfile(platform: string, handle: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/authors/${platform}/${handle}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Author profile lookup failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchRelatedClaims(contentId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/content/${contentId}/related`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Related claims lookup failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchTrendingNews(category: string = 'all', query?: string): Promise<any> {
   const params = new URLSearchParams();
   if (category && category !== 'all') params.append('category', category);
@@ -266,3 +286,4 @@ export async function fetchTrendingNews(category: string = 'all', query?: string
   }
   return response.json();
 }
+

@@ -98,13 +98,15 @@ async def _preprocess_modality(item: ContentItem, redis_client: AsyncRedis, cont
         return extracted_text or raw, None
 
     if modality == "social_post":
-        await set_progress(redis_client, content_id_str, "parsing", "Parsing social media post")
-        from app.services.social_post_parser import parse_social_post
-        parsed = parse_social_post(raw)
-        extracted_text = parsed.get("text", raw)
-        item.title = parsed.get("title")
+        await set_progress(redis_client, content_id_str, "parsing", "Fetching social post metadata and author details")
+        from app.services.social_ingestion_service import ingest_social_post
+        post_data = await ingest_social_post(raw)
+        extracted_text = post_data.post_text or raw
+        if post_data.author_handle:
+            item.title = f"Post by @{post_data.author_handle} ({post_data.platform.upper()})"
         item.extracted_text = extracted_text
-        return extracted_text, parsed.get("domain")
+        domain = f"{post_data.platform}.com" if post_data.platform and post_data.platform != "unknown" else None
+        return extracted_text, domain
 
     await set_progress(redis_client, content_id_str, "preprocessing", "Preparing content for analysis")
     return raw, None
@@ -144,6 +146,22 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
 
         try:
             extracted_text, domain = await _preprocess_modality(item, redis_client, content_id_str)
+
+            if item.modality == "social_post":
+                from app.services.social_ingestion_service import ingest_social_post
+                from app.services.author_reputation_service import get_or_create_social_author
+                post_data = await ingest_social_post(item.raw_payload)
+                if post_data.author_handle:
+                    author = await get_or_create_social_author(
+                        session,
+                        platform=post_data.platform,
+                        handle=post_data.author_handle,
+                        display_name=post_data.author_display_name,
+                        verified=post_data.author_verified,
+                        follower_count=post_data.author_follower_count,
+                        account_created_at=post_data.author_account_created_at,
+                    )
+                    item.social_author_id = author.id
 
             from app.services.pii_redactor import redact_pii
             extracted_text = redact_pii(extracted_text)

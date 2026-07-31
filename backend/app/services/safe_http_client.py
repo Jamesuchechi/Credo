@@ -45,7 +45,7 @@ async def validate_url_host(url: str) -> str:
     if not hostname:
         raise ValueError("Invalid URL: Missing hostname.")
 
-    if hostname.lower() in FORBIDDEN_HOSTNAMES:
+    if hostname.lower() in FORBIDDEN_HOSTNAMES or hostname.lower().endswith(".internal"):
         raise ValueError(f"Access to forbidden target hostname '{hostname}' is blocked.")
 
     port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)

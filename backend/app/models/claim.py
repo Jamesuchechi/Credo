@@ -17,6 +17,7 @@ class Claim(Base):
     content_item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("content_items.id", ondelete="CASCADE"), index=True, nullable=False)
     
     claim_text: Mapped[str] = mapped_column(Text, nullable=False)
+    # extracted_speaker: Speaker attributed inside the claim text (e.g. "President Said"), NOT the social account poster (see ContentItem.social_author_id)
     extracted_speaker: Mapped[str | None] = mapped_column(String(255), nullable=True)
     verdict: Mapped[str] = mapped_column(String(50), default="unverified", nullable=False)  # supported, contradicted, unverified
     confidence_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
