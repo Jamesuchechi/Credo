@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     REDDIT_CLIENT_ID: str = ""
     REDDIT_CLIENT_SECRET: str = ""
 
+    # Receipt Signing Security
+    RECEIPT_SIGNING_KEY: str = "dev-receipt-signing-key-min-32-chars-change-in-prod"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

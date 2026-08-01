@@ -119,8 +119,10 @@ async def dashboard_summary(
     avg_accuracy_stmt = (
         select(
             func.avg(
-                AnalysisResult.dimension_scores["factual_accuracy"]
-                .astext.cast(Float)
+                cast(
+                    AnalysisResult.dimension_scores["factual_accuracy"].as_string(),
+                    Float,
+                )
             )
         )
         .join(ContentItem, ContentItem.id == AnalysisResult.content_item_id)

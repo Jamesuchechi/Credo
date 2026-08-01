@@ -75,9 +75,10 @@ async def validate_url_host(url: str) -> str:
 
 
 class SafeFetchResponse:
-    def __init__(self, status_code: int, text: str, headers: dict[str, str], url: str):
+    def __init__(self, status_code: int, text: str, headers: dict[str, str], url: str, content: bytes | None = None):
         self.status_code = status_code
         self.text = text
+        self.content = content if content is not None else text.encode("utf-8")
         self.headers = headers
         self.url = url
 
@@ -159,6 +160,7 @@ async def safe_fetch_url(
             return SafeFetchResponse(
                 status_code=response.status_code,
                 text=text_body,
+                content=full_body,
                 headers=resp_headers,
                 url=str(response.url),
             )

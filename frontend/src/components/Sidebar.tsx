@@ -14,6 +14,7 @@ import {
   Newspaper,
   Code,
   BarChart2,
+  Trophy,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -83,6 +84,9 @@ export const Sidebar: React.FC = () => {
         </NavLink>
         <NavLink to="/dashboard/claim-graph" className={navLink}>
           <Share2 size={16} /> Claim Graph
+        </NavLink>
+        <NavLink to="/dashboard/quiz" className={navLink}>
+          <Trophy size={16} /> Literacy Quiz
         </NavLink>
 
         {/* SECTION 3: DEVELOPER & PLATFORM */}

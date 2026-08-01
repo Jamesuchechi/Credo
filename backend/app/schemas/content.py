@@ -45,6 +45,9 @@ class ContentAnalysisResponse(BaseModel):
     corroborating_sources: list[dict[str, Any]] | None = None
     claims: list[ClaimResponse] = []
     social_echoes: list[dict[str, Any]] | None = None
+    has_flagged_source_update: bool = False
+    source_update_notice: str | None = None
+    flagged_sources: list[dict[str, Any]] | None = None
     model_version: str | None = None
     created_at: datetime
 

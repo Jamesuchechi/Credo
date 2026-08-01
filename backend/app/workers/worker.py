@@ -230,6 +230,14 @@ async def process_content_item(ctx: dict, content_id_str: str) -> bool:
             )
             session.add(analysis)
 
+            # Register cited sources for Retraction Watchdog tracking
+            if global_references:
+                try:
+                    from app.services.retraction_watchdog_service import register_cited_sources
+                    await register_cited_sources(session, item.id, global_references[:5])
+                except Exception as register_err:
+                    logger.warning(f"Failed to register cited sources for ContentItem {content_id}: {register_err!s}")
+
             item.status = "complete"
             await session.commit()
 
@@ -258,6 +266,16 @@ async def sanitize_and_anonymize_expired_items_job(ctx: dict) -> int:
         return purged_count
 
 
+async def recheck_cited_sources_job(ctx: dict) -> dict[str, int]:
+    """Scheduled background ARQ job to recheck cited sources for retractions and updates."""
+    logger.info("Starting scheduled Retraction Watchdog source recheck job...")
+    from app.services.retraction_watchdog_service import recheck_all_cited_sources
+    async with AsyncSessionLocal() as session:
+        summary = await recheck_all_cited_sources(session, limit=50)
+        logger.info(f"Retraction Watchdog recheck job complete: {summary}")
+        return summary
+
+
 from app.db.init_db import init_db
 
 
@@ -271,8 +289,15 @@ async def shutdown(ctx: dict):
 
 
 class WorkerSettings:
-    functions = [process_content_item, sanitize_and_anonymize_expired_items_job]
-    cron_jobs = [cron(sanitize_and_anonymize_expired_items_job, hour=2, minute=0)]
+    functions = [
+        process_content_item,
+        sanitize_and_anonymize_expired_items_job,
+        recheck_cited_sources_job,
+    ]
+    cron_jobs = [
+        cron(sanitize_and_anonymize_expired_items_job, hour=2, minute=0),
+        cron(recheck_cited_sources_job, hour=3, minute=0),
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)

@@ -21,6 +21,9 @@ import {
   Network,
   Code,
   Radio,
+  Lock,
+  GitBranch,
+  Scale,
 } from 'lucide-react';
 import { getContentAnalysis, streamAnalysisProgress, fetchCredibilityCard, submitClaimCorrection, fetchRelatedClaims } from '../api/client';
 import { ContentAnalysisResponse } from '../types';
@@ -28,6 +31,9 @@ import { ModelVersionChangelogModal } from '../components/ModelVersionChangelogM
 import { ClaimNetworkGraph } from '../components/ClaimNetworkGraph';
 import { EmbedWidgetModal } from '../components/EmbedWidgetModal';
 import { DebunkCardModal } from '../components/DebunkCardModal';
+import { CredibilityReceiptModal } from '../components/CredibilityReceiptModal';
+import { ClaimMutationModal } from '../components/ClaimMutationModal';
+import { DebateModeModal } from '../components/DebateModeModal';
 import { SocialEchoRadar } from '../components/SocialEchoRadar';
 import { AuthorCard } from '../components/AuthorCard';
 
@@ -42,6 +48,11 @@ export const AnalysisDetailPage: React.FC = () => {
   const [showChangelog, setShowChangelog] = useState(false);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
   const [showDebunkModal, setShowDebunkModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showMutationModal, setShowMutationModal] = useState(false);
+  const [selectedClaimForMutation, setSelectedClaimForMutation] = useState<string | null>(null);
+  const [showDebateModal, setShowDebateModal] = useState(false);
+  const [selectedClaimForDebate, setSelectedClaimForDebate] = useState<{ id: string; text: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'claims' | 'network' | 'social' | 'audit' | 'json'>('overview');
   const [copiedJson, setCopiedJson] = useState(false);
@@ -281,6 +292,27 @@ export const AnalysisDetailPage: React.FC = () => {
           {isComplete && analysis && (
             <>
               <button
+                onClick={() => setShowReceiptModal(true)}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--verified)',
+                  cursor: 'pointer',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  fontFamily: 'var(--mono)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Lock size={14} />
+                Signed Receipt
+              </button>
+
+              <button
                 onClick={() => setShowEmbedModal(true)}
                 style={{
                   background: 'var(--surface)',
@@ -416,6 +448,34 @@ export const AnalysisDetailPage: React.FC = () => {
       {/* Completed Analysis Main View */}
       {isComplete && analysis && (
         <div>
+          {/* Retraction Watchdog Alert Banner */}
+          {analysis.has_flagged_source_update && (
+            <div
+              style={{
+                padding: '18px 22px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid var(--disputed)',
+                borderRadius: '16px',
+                color: 'var(--disputed)',
+                marginBottom: '28px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '14px',
+                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.12)',
+              }}
+            >
+              <AlertTriangle size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--mono)', marginBottom: '4px', letterSpacing: '0.04em' }}>
+                  ⚠️ RETRACTION WATCHDOG ALERT: SOURCE MODIFIED OR RETRACTED
+                </div>
+                <p style={{ fontSize: '14px', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+                  {analysis.source_update_notice || 'A source used in this credibility analysis has been updated, retracted, or removed since the original audit report was generated.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Hero Summary Header Card */}
           <div
             className="panel"
@@ -688,6 +748,51 @@ export const AnalysisDetailPage: React.FC = () => {
                   />
                 )}
 
+                {/* Audio / Voice Note Transcript Panel */}
+                {(analysis.modality === 'audio' || (analysis as any).raw_text) && (
+                  <div className="panel" style={{ padding: '24px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '18px' }}>🎙️</span>
+                        <h3 style={{ fontFamily: 'var(--serif)', fontSize: '20px', fontWeight: 500, margin: 0, color: 'var(--text)' }}>
+                          Voice Note & Speech Transcript
+                        </h3>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', padding: '3px 10px', borderRadius: '100px', background: 'rgba(129,140,248,0.15)', color: '#818cf8', fontWeight: 600 }}>
+                          Lang: {((analysis as any).language || 'EN').toUpperCase()}
+                        </span>
+
+                        <button
+                          onClick={() => {
+                            const summaryText = `🎙️ Credo Voice Note Fact-Check\n\nVERDICT: ${score >= 80 ? 'HIGHLY CREDIBLE' : score >= 50 ? 'CAUTION' : 'DISPUTED'} (${score.toFixed(1)}/100)\nTitle: "${analysis.title || 'Audio Statement'}"\nClaims Extracted: ${analysis.claims?.length || 0}`;
+                            navigator.clipboard.writeText(summaryText);
+                            alert('WhatsApp Low-Bandwidth Compact Summary copied to clipboard!');
+                          }}
+                          style={{
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--line)',
+                            color: 'var(--brass)',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontFamily: 'var(--mono)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Copy WhatsApp Compact Summary
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--surface-2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--line)', fontFamily: 'var(--mono)' }}>
+                      {(analysis as any).raw_text || analysis.title}
+                    </div>
+                  </div>
+                )}
+
                 {/* Reasoning Chain summary */}
                 {analysis.reasoning_chain && (
                   <div className="panel" style={{ padding: '24px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)' }}>
@@ -796,7 +901,55 @@ export const AnalysisDetailPage: React.FC = () => {
                               <strong style={{ color: 'var(--text)' }}>Evidence Summary:</strong> {claim.evidence_summary}
                             </p>
 
-                            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  setSelectedClaimForMutation(claim.id);
+                                  setShowMutationModal(true);
+                                }}
+                                style={{
+                                  background: 'var(--surface)',
+                                  border: '1px solid var(--line)',
+                                  color: 'var(--brass)',
+                                  padding: '6px 14px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontFamily: 'var(--mono)',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <GitBranch size={13} />
+                                Mutation Lineage
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setSelectedClaimForDebate({ id: claim.id, text: claim.claim_text });
+                                  setShowDebateModal(true);
+                                }}
+                                style={{
+                                  background: 'var(--surface)',
+                                  border: '1px solid var(--line)',
+                                  color: '#818cf8',
+                                  padding: '6px 14px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontFamily: 'var(--mono)',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <Scale size={13} />
+                                Debate Mode (3-Pass Audit)
+                              </button>
+
                               <button
                                 onClick={() => {
                                   setActiveClaimForEvidence(
@@ -1255,6 +1408,38 @@ export const AnalysisDetailPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Retraction Watchdog Monitor Card */}
+                <div className="panel" style={{ padding: '24px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                  <h3 style={{ fontFamily: 'var(--serif)', fontSize: '20px', fontWeight: 500, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={20} color="var(--brass)" />
+                    Retraction Watchdog Monitor
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: '14px', lineHeight: 1.4 }}>
+                    Credo background workers continuously recheck cited source URLs for post-publication retractions, 404 removals, or editor's notes.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'var(--mono)', fontSize: '12.5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface-2)', borderRadius: '6px' }}>
+                      <span style={{ color: 'var(--text-dim)' }}>Watchdog Status</span>
+                      <strong style={{ color: analysis.has_flagged_source_update ? 'var(--disputed)' : 'var(--verified)' }}>
+                        {analysis.has_flagged_source_update ? 'FLAGGED SOURCE UPDATE' : 'ACTIVE / NO RETRACTIONS'}
+                      </strong>
+                    </div>
+                    {analysis.flagged_sources && analysis.flagged_sources.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                        {analysis.flagged_sources.map((src: any, i: number) => (
+                          <div key={i} style={{ padding: '10px 12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid var(--disputed)', borderRadius: '6px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--disputed)', marginBottom: '4px' }}>
+                              Status: {src.status.toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text)', wordBreak: 'break-all' }}>{src.source_url}</div>
+                            <div style={{ fontSize: '11.5px', color: 'var(--text-dim)', marginTop: '4px' }}>{src.update_notes}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1319,12 +1504,46 @@ export const AnalysisDetailPage: React.FC = () => {
         />
       )}
 
+      {/* Signed Credibility Receipt Modal */}
+      {analysis && (
+        <CredibilityReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          analysis={analysis}
+        />
+      )}
+
       {/* Social Infographic & Debunk Card Modal */}
       {analysis && (
         <DebunkCardModal
           isOpen={showDebunkModal}
           onClose={() => setShowDebunkModal(false)}
           analysis={analysis}
+        />
+      )}
+
+      {/* Claim Mutation Lineage Modal */}
+      {selectedClaimForMutation && (
+        <ClaimMutationModal
+          isOpen={showMutationModal}
+          onClose={() => {
+            setShowMutationModal(false);
+            setSelectedClaimForMutation(null);
+          }}
+          claimId={selectedClaimForMutation}
+        />
+      )}
+
+      {/* Advocate / Skeptic Debate Mode Modal */}
+      {selectedClaimForDebate && (
+        <DebateModeModal
+          isOpen={showDebateModal}
+          onClose={() => {
+            setShowDebateModal(false);
+            setSelectedClaimForDebate(null);
+          }}
+          claimId={selectedClaimForDebate.id}
+          claimText={selectedClaimForDebate.text}
         />
       )}
     </div>

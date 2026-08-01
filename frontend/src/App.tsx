@@ -31,6 +31,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import ShareTargetPage from './pages/ShareTargetPage';
 import SourceDetailPage from './pages/SourceDetailPage';
 import { AnalysisDetailPage } from './pages/AnalysisDetailPage';
+import { PublicQuizPage } from './pages/PublicQuizPage';
 import { fetchHealth } from './api/client';
 import { HealthResponse } from './types';
 
@@ -135,6 +136,7 @@ export const App: React.FC = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/quiz" element={<PublicQuizPage />} />
             <Route path="/analysis/:id" element={<AnalysisDetailPage />} />
             <Route
               path="/login"
@@ -169,6 +171,7 @@ export const App: React.FC = () => {
               <Route path="/dashboard/sources/:domain" element={<SourceDetailPage />} />
               <Route path="/dashboard/review-queue" element={<ReviewQueuePage />} />
               <Route path="/dashboard/claim-graph" element={<ClaimGraphPage />} />
+              <Route path="/dashboard/quiz" element={<PublicQuizPage />} />
               <Route path="/dashboard/api-keys" element={<ApiKeysPage />} />
               <Route path="/dashboard/publisher-widgets" element={<PublisherWidgetsPage />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />

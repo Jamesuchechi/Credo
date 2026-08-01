@@ -24,12 +24,21 @@ class Claim(Base):
     evidence_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
     
     reasoning_chain: Mapped[dict[str, Any]] = mapped_column(
-        JSONB().with_variant(JSON(), "sqlite"),
+        JSON().with_variant(JSONB(), "postgresql"),
         default=dict,
         nullable=False
     )
     
+    parent_claim_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("claims.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    mutation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     ttl_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     content_item = relationship("ContentItem", back_populates="claims")
+    parent_claim = relationship("Claim", remote_side=[id], backref="child_claims")

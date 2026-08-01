@@ -103,6 +103,9 @@ export interface ContentAnalysisResponse {
   corroborating_sources?: CorroboratingSource[];
   claims?: ClaimItem[];
   social_echoes?: SocialEchoItem[];
+  has_flagged_source_update?: boolean;
+  source_update_notice?: string;
+  flagged_sources?: any[];
   model_version?: string;
   created_at: string;
 }

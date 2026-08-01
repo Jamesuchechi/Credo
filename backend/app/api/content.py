@@ -37,6 +37,7 @@ from app.schemas.content import (
 )
 from app.schemas.source import SourceResponse
 from app.services.social_echo_service import gather_social_echoes
+from app.services.retraction_watchdog_service import get_flagged_sources_for_content
 from app.services.source_reputation_service import (
     calculate_source_reputation_score,
     get_or_create_source,
@@ -242,6 +243,7 @@ async def get_content_analysis(
 
     query_text = item.title or (item.raw_payload[:150] if item.raw_payload else "")
     social_echoes = await gather_social_echoes(query_text) if query_text else []
+    flagged_sources = await get_flagged_sources_for_content(db, item.id) if item.has_flagged_source_update else []
 
     return ContentAnalysisResponse(
         content_id=item.id,
@@ -256,9 +258,40 @@ async def get_content_analysis(
         corroborating_sources=analysis.corroborating_sources if analysis else None,
         claims=claims_list,
         social_echoes=social_echoes,
+        has_flagged_source_update=bool(item.has_flagged_source_update),
+        source_update_notice=item.source_update_notice,
+        flagged_sources=flagged_sources,
         model_version=analysis.model_version if analysis else None,
         created_at=item.created_at
     )
+
+
+@router.post("/content/{content_id}/recheck-sources")
+async def trigger_recheck_content_sources(
+    content_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Triggers an immediate Retraction Watchdog recheck on cited sources for a content item.
+    """
+    stmt = select(ContentItem).where(ContentItem.id == content_id, ContentItem.user_id == current_user.id)
+    res = await db.execute(stmt)
+    item = res.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Content item not found")
+
+    from app.services.retraction_watchdog_service import recheck_all_cited_sources, get_flagged_sources_for_content
+    summary = await recheck_all_cited_sources(db, limit=20)
+    flagged = await get_flagged_sources_for_content(db, content_id)
+
+    return {
+        "content_id": content_id,
+        "has_flagged_source_update": bool(item.has_flagged_source_update),
+        "source_update_notice": item.source_update_notice,
+        "flagged_sources": flagged,
+        "summary": summary,
+    }
 
 
 @router.get("/content/{content_id}/related")

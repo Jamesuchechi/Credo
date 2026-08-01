@@ -23,6 +23,8 @@ class ContentItem(Base):
     # social_author_id: Account that posted this social submission (distinct from Claim.extracted_speaker)
     social_author_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("social_authors.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="queued", index=True)
+    has_flagged_source_update: Mapped[bool] = mapped_column(default=False, index=True)
+    source_update_notice: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", lazy="joined")
